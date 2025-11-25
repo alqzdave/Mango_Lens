@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Professional Navbar</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .navbar-gradient {
+            background: linear-gradient(135deg, #14532d 0%, #166534 50%, #15803d 100%);
+        }
+        
+        .logo-glow {
+            filter: drop-shadow(0 0 8px rgba(34, 197, 94, 0.3));
+        }
+        
+        .nav-link {
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-link::before {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 50%;
+            width: 0;
+            height: 2px;
+            background: linear-gradient(90deg, #fbbf24, #f59e0b);
+            transition: all 0.3s ease;
+            transform: translateX(-50%);
+        }
+        
+        .nav-link:hover::before {
+            width: 100%;
+        }
+        
+        .nav-link:hover {
+            color: #fbbf24;
+            transform: translateY(-1px);
+        }
+        
+        .mobile-menu {
+            backdrop-filter: blur(10px);
+            background: rgba(20, 83, 45, 0.95);
+        }
+        
+        .hamburger {
+            transition: all 0.3s ease;
+        }
+        
+        .hamburger:hover {
+            transform: scale(1.1);
+            color: #fbbf24;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <!--Navbar -->
+    <nav class="navbar-gradient text-white px-6 lg:px-12 py-4 flex justify-between items-center fixed w-full top-0 z-50 shadow-2xl border-b border-green-700/30">
+    <div class="flex items-center space-x-4">
+        <div class="logo-glow">
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="MangoLens Logo" class="h-16 w-16 object-contain filter brightness-0 invert">
+        </div>
+        <div class="flex flex-col">
+            <span class="text-2xl lg:text-3xl font-bold tracking-wide">
+                MANGO<span class="text-yellow-400 drop-shadow-lg">LENS</span>
+            </span>
+            <span class="text-xs text-green-200 font-medium tracking-wider">SMART CLASSIFICATION</span>
+        </div>
+    </div>
+        
+        <!-- Desktop Navigation -->
+        <div class="hidden lg:flex items-center space-x-8" id="menu">
+            <a href="{{ url_for('index') }}" data-nav="home-desktop" class="nav-link text-lg font-semibold px-4 py-2 rounded-lg flex items-center space-x-2">
+                <i class="fas fa-home text-sm"></i>
+                <span>Home</span>
+            </a>
+            <a href="{{ url_for('index') }}#about-section" data-nav="about-desktop" class="nav-link text-lg font-semibold px-4 py-2 rounded-lg flex items-center space-x-2">
+                <i class="fas fa-info-circle text-sm"></i>
+                <span>About</span>
+            </a>
+            <a href="{{ url_for('record') }}" class="nav-link text-lg font-semibold px-4 py-2 rounded-lg flex items-center space-x-2">
+                <i class="fas fa-chart-bar text-sm"></i>
+                <span>Records</span>
+            </a>
+            {% if user_role == 'owner' %}
+            <a href="{{ url_for('account') }}" class="nav-link text-lg font-semibold px-4 py-2 rounded-lg flex items-center space-x-2">
+                <i class="fas fa-user-circle text-sm"></i>
+                <span>Account</span>
+            </a>
+            {% endif %}
+            
+            <!-- Log Out Button -->
+            <div class="ml-4 pl-4 border-l border-green-600">
+                <a href="{{ url_for('logout') }}" class="bg-gradient-to-r from-red-500 to-red-600 text-white px-6 py-2 rounded-full font-bold text-sm hover:from-red-400 hover:to-red-500 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105">
+                    <i class="fas fa-sign-out-alt mr-2"></i>
+                    Log Out
+                </a>
+            </div>
+        </div>
+        
+        <!-- Mobile Menu Button -->
+        <button id="menu-btn" class="lg:hidden hamburger p-2 rounded-lg hover:bg-green-700/50">
+            <i class="fas fa-bars text-2xl"></i>
+        </button>
+    </nav>
+    
+    <!-- Mobile Menu Overlay (Sidebar Drawer from Right) -->
+    <div id="mobile-menu" class="lg:hidden fixed inset-0 z-40 invisible opacity-0 transition-opacity duration-300">
+        <!-- Dark backdrop -->
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="document.getElementById('mobile-menu').classList.add('invisible', 'opacity-0'); document.getElementById('menu-sidebar').classList.add('translate-x-full');"></div>
+        
+        <!-- Sidebar drawer -->
+        <div id="menu-sidebar" class="absolute top-0 right-0 h-full w-72 bg-gradient-to-br from-green-800 to-green-900 shadow-2xl transform translate-x-full transition-transform duration-300 ease-in-out">
+            <div class="flex flex-col h-full pt-20 px-6">
+                <a href="{{ url_for('index') }}" data-nav="home-mobile" class="flex items-center space-x-4 text-white text-base font-semibold py-4 border-b border-green-600/30 hover:text-yellow-400 hover:bg-green-700/30 px-4 rounded transition-all">
+                    <i class="fas fa-home w-5"></i>
+                    <span>Home</span>
+                </a>
+                <a href="{{ url_for('index') }}#about-section" data-nav="about-mobile" class="flex items-center space-x-4 text-white text-base font-semibold py-4 border-b border-green-600/30 hover:text-yellow-400 hover:bg-green-700/30 px-4 rounded transition-all">
+                    <i class="fas fa-info-circle w-5"></i>
+                    <span>About</span>
+                </a>
+                <a href="{{ url_for('record') }}" class="flex items-center space-x-4 text-white text-base font-semibold py-4 border-b border-green-600/30 hover:text-yellow-400 hover:bg-green-700/30 px-4 rounded transition-all">
+                    <i class="fas fa-chart-bar w-5"></i>
+                    <span>Records</span>
+                </a>
+                {% if user_role == 'owner' %}
+                <a href="{{ url_for('account') }}" class="flex items-center space-x-4 text-white text-base font-semibold py-4 border-b border-green-600/30 hover:text-yellow-400 hover:bg-green-700/30 px-4 rounded transition-all">
+                    <i class="fas fa-user-circle w-5"></i>
+                    <span>Account</span>
+                </a>
+                {% endif %}
+                
+                <!-- Mobile Log Out -->
+                <div class="mt-8 px-4">
+                    <a href="{{ url_for('logout') }}" class="flex items-center justify-center w-full bg-gradient-to-r from-red-500 to-red-600 text-white px-6 py-3 rounded-lg font-bold text-base shadow-lg hover:from-red-600 hover:to-red-700 transition-all">
+                        <i class="fas fa-sign-out-alt mr-2"></i>
+                        <span>Log Out</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const menuBtn = document.getElementById('menu-btn');
+        const mobileMenu = document.getElementById('mobile-menu');
+        const menuSidebar = document.getElementById('menu-sidebar');
+        
+        // Open menu
+        menuBtn.addEventListener('click', () => {
+            mobileMenu.classList.remove('invisible', 'opacity-0');
+            setTimeout(() => {
+                menuSidebar.classList.remove('translate-x-full');
+            }, 10);
+        });
+        
+        // Close menu when clicking on links
+        const mobileLinks = document.querySelectorAll('#menu-sidebar a');
+        mobileLinks.forEach(link => {
+            link.addEventListener('click', () => {
+                menuSidebar.classList.add('translate-x-full');
+                setTimeout(() => {
+                    mobileMenu.classList.add('invisible', 'opacity-0');
+                }, 300);
+            });
+        });
+
+        function handleHomeClick(event) {
+            // Check if on the home/index page
+            if (window.location.pathname === '/' || window.location.pathname === '/index') {
+                event.preventDefault();
+                window.scrollTo({
+                    top: 0,
+                    behavior: 'smooth'
+                });
+            }
+            
+        }
+
+        function handleAboutClick(event) {
+            // Check if on the home/index page
+            if (window.location.pathname === '/' || window.location.pathname === '/index') {
+                event.preventDefault();
+                document.getElementById('about-section').scrollIntoView({ 
+                    behavior: 'smooth' 
+                });
+                // Close mobile menu if open
+                menuSidebar.classList.add('translate-x-full');
+                setTimeout(() => {
+                    mobileMenu.classList.add('invisible', 'opacity-0');
+                }, 300);
+            }
+            // If on other pages, let the default link behavior work (navigate to home#about)
+        }
+
+        // Add event listeners when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            // Desktop links
+            const homeDesktop = document.querySelector('a[data-nav="home-desktop"]');
+            const aboutDesktop = document.querySelector('a[data-nav="about-desktop"]');
+            if (homeDesktop) homeDesktop.addEventListener('click', handleHomeClick);
+            if (aboutDesktop) aboutDesktop.addEventListener('click', handleAboutClick);
+            
+            // Mobile links
+            const homeMobile = document.querySelector('a[data-nav="home-mobile"]');
+            const aboutMobile = document.querySelector('a[data-nav="about-mobile"]');
+            if (homeMobile) homeMobile.addEventListener('click', handleHomeClick);
+            if (aboutMobile) aboutMobile.addEventListener('click', handleAboutClick);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mango Lens</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {},
+            },
+        };
+    </script>
+    <style>
+        html {
+            scroll-behavior: smooth;
+        }
+        #about-section {
+            scroll-margin-top: 220px;
+        }
+        
+        .team-card {
+            background: linear-gradient(145deg, #ffffff, #f8fafc);
+            border: 1px solid rgba(34, 197, 94, 0.1);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .team-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(34, 197, 94, 0.1), transparent);
+            transition: left 0.5s;
+        }
+        
+        .team-card:hover::before {
+            left: 100%;
+        }
+        
+        .team-card:hover {
+            transform: translateY(-8px) scale(1.03);
+            box-shadow: 0 20px 40px rgba(34, 197, 94, 0.2);
+            border-color: rgba(34, 197, 94, 0.4);
+        }
+        
+        .team-image-container {
+            position: relative;
+            overflow: hidden;
+            border-radius: 50%;
+        }
+        
+        .team-image {
+            transition: transform 0.4s ease;
+        }
+        
+        .team-card:hover .team-image {
+            transform: scale(1.1);
+        }
+    </style>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            function checkVisibility() {
+                let section = document.getElementById("about-section");
+                let position = section.getBoundingClientRect().top;
+                let screenPosition = window.innerHeight / 1.2;
+
+                if (position < screenPosition) {
+                    section.classList.add("opacity-100", "translate-y-0");
+                    window.removeEventListener("scroll", checkVisibility);
+                }
+            }
+            window.addEventListener("scroll", checkVisibility);
+            checkVisibility();
+
+            document.getElementById("team-btn").addEventListener("click", function () {
+                document.getElementById("team-section").scrollIntoView({ behavior: "smooth" });
+            });
+        });
+    </script>
+</head>
+<body class="text-white">
+    {% include 'navbar.html' %}
+
+    <!-- Hero Section -->
+    <section class="relative w-screen h-screen flex justify-center items-center overflow-hidden m-0 p-0">
+        <video autoplay loop muted playsinline preload="auto" class="absolute top-0 left-0 w-full h-full object-cover m-0 p-0">
+            <source src="{{ url_for('static', filename='MANGO.mp4') }}" type="video/mp4">
+            <source src="{{ url_for('static', filename='MANGO.webm') }}" type="video/webm">
+            Your browser does not support the video tag.
+        </video>
+        <div class="absolute inset-0 bg-gradient-to-l from-transparent to-green-900"></div>
+        <div class="relative z-10 w-full md:w-1/2 space-y-2 md:space-y-4 px-4 md:pl-12">
+            <h3 class="text-yellow-400 text-base sm:text-xl md:text-2xl font-bold italic">IoT-Enabled Automated</h3>
+            <h1 class="text-white text-2xl sm:text-4xl md:text-6xl font-extrabold leading-tight">Variety Recognition <span class="text-yellow-400">and</span> Maturity-Based Sorting</h1>
+            <p class="text-gray-300 text-sm sm:text-base md:text-lg">Farmers Organization for the Rural Upliftment of Mindoro Agri. Corporation</p>
+
+            <div class="mt-4 md:mt-6 flex space-x-3 md:space-x-4">
+                <button id="team-btn" class="bg-yellow-400 text-green-900 px-4 py-2 md:px-6 md:py-3 rounded-lg text-sm md:text-lg font-semibold hover:bg-yellow-500 transition duration-300">
+                    Team
+                </button>
+                <button class="border-2 border-yellow-400 text-yellow-400 px-4 py-2 md:px-6 md:py-3 rounded-lg text-sm md:text-lg font-semibold hover:bg-yellow-400 hover:text-green-900 transition duration-300">
+                    Contact Us
+                </button>
+            </div>
+        </div>
+        <div class="relative z-10 w-1/2 hidden md:block"></div>
+    </section>
+
+    <!-- About Section -->
+    <section id="about-section" class="w-full bg-white text-green-900 py-8 md:py-12 px-4 m-0 opacity-0 translate-y-10 transition-all duration-1000">
+        <div class="max-w-6xl mx-auto text-center">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12">
+                <div>
+                    <img src="{{ url_for('static', filename='mission.png') }}" alt="Mission Icon" class="mx-auto h-12 md:h-16 mb-4">
+                    <h2 class="text-xl md:text-2xl font-bold">OUR MISSION</h2>
+                    <p class="mt-4 text-base md:text-lg">To revolutionize mango farming operations by providing an automated, efficient, and accurate solution for classifying mango varieties and assessing their maturity levels.</p>
+                </div>
+                <div>
+                    <img src="{{ url_for('static', filename='vision.png') }}" alt="Vision Icon" class="mx-auto h-12 md:h-16 mb-4">
+                    <h2 class="text-xl md:text-2xl font-bold">OUR VISION</h2>
+                    <p class="mt-4 text-base md:text-lg">A future where mango farming is transformed through automation, precision, and efficiency.</p>
+                </div>
+                <div>
+                    <img src="{{ url_for('static', filename='objectives.png') }}" alt="Core Values Icon" class="mx-auto h-12 md:h-16 mb-4">
+                    <h2 class="text-xl md:text-2xl font-bold">OBJECTIVES</h2>
+                    <ul class="mt-4 text-base md:text-lg space-y-2 text-left max-w-xs mx-auto">
+                        <li>Develop an automated mango sorting system</li>
+                        <li>Classify mango varieties</li>
+                        <li>Detect mango ripeness</li>
+                        <li>Integrate real-time data analytics</li>
+                        <li>Display data using visual tools</li>
+                        <li>Ensure a user-friendly interface</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Professional Team Section -->
+    <section id="team-section" class="w-full bg-gray-100 text-green-900 py-12 md:py-20 px-4">
+        <div class="max-w-6xl mx-auto text-center">
+            <h2 class="text-3xl md:text-4xl font-bold mb-8 md:mb-10">Meet The Team</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
+                
+                <!-- Team Member 1 -->
+                <div class="team-card p-6 rounded-2xl shadow-lg text-center">
+                    <div class="team-image-container w-32 h-32 mx-auto mb-6">
+                        <img src="{{ url_for('static', filename='member1.jpg') }}" alt="Darius Abog" class="team-image w-full h-full object-cover rounded-full shadow-lg">
+                    </div>
+                    <h3 class="text-xl font-bold text-green-800 mb-2">Darius Abog</h3>
+                    <p class="text-green-600 font-semibold mb-3">Project Adviser</p>
+                    <div class="w-12 h-1 bg-gradient-to-r from-green-400 to-green-600 mx-auto mb-4"></div>
+                    <p class="text-gray-600 text-sm leading-relaxed">
+                        Providing expert IoT guidance, valuable advice, and strategic direction for our project's success.
+                    </p>
+                </div>
+
+                <!-- Team Member 2 -->
+                <div class="team-card p-6 rounded-2xl shadow-lg text-center">
+                    <div class="team-image-container w-32 h-32 mx-auto mb-6">
+                        <img src="{{ url_for('static', filename='member2.png') }}" alt="Mark Dave Alquiza" class="team-image w-full h-full object-cover rounded-full shadow-lg">
+                    </div>
+                    <h3 class="text-xl font-bold text-green-800 mb-2">Mark Dave Alquiza</h3>
+                    <p class="text-green-600 font-semibold mb-3">Member</p>
+                    <div class="w-12 h-1 bg-gradient-to-r from-blue-400 to-blue-600 mx-auto mb-4"></div>
+                    <p class="text-gray-600 text-sm leading-relaxed">
+                        Leading the team with innovation, dedication, and strategic decision-making for project success.
+                    </p>
+                </div>
+
+                <!-- Team Member 3 -->
+                <div class="team-card p-6 rounded-2xl shadow-lg text-center">
+                    <div class="team-image-container w-32 h-32 mx-auto mb-6">
+                        <img src="{{ url_for('static', filename='member3.png') }}" alt="Ruby Ann Maramot" class="team-image w-full h-full object-cover rounded-full shadow-lg">
+                    </div>
+                    <h3 class="text-xl font-bold text-green-800 mb-2">Ruby Ann Maramot</h3>
+                    <p class="text-green-600 font-semibold mb-3">Member</p>
+                    <div class="w-12 h-1 bg-gradient-to-r from-purple-400 to-purple-600 mx-auto mb-4"></div>
+                    <p class="text-gray-600 text-sm leading-relaxed">
+                        Contributing skills and ideas to enhance the project's development and success.
+                    </p>
+                </div>
+
+                <!-- Team Member 4 -->
+                <div class="team-card p-6 rounded-2xl shadow-lg text-center">
+                    <div class="team-image-container w-32 h-32 mx-auto mb-6">
+                        <img src="{{ url_for('static', filename='member4.jpeg') }}" alt="Jerico Raquedan" class="team-image w-full h-full object-cover rounded-full shadow-lg">
+                    </div>
+                    <h3 class="text-xl font-bold text-green-800 mb-2">Jerico Raquedan</h3>
+                    <p class="text-green-600 font-semibold mb-3">Member</p>
+                    <div class="w-12 h-1 bg-gradient-to-r from-yellow-400 to-yellow-600 mx-auto mb-4"></div>
+                    <p class="text-gray-600 text-sm leading-relaxed">
+                        Supporting the team with dedication and collaboration.
+                    </p>
+                </div>
+
+            </div>
+        </div>
+    </section>
+</body>
+</html>

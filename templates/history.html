@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>History Record - MangoLens</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* Print Styles */
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+            
+            body {
+                background: white !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            
+            .print-container {
+                padding: 20px !important;
+                box-shadow: none !important;
+                border: none !important;
+            }
+            
+            table {
+                page-break-inside: auto !important;
+            }
+            
+            tr {
+                page-break-inside: avoid !important;
+                page-break-after: auto !important;
+            }
+            
+            thead {
+                display: table-header-group !important;
+            }
+            
+            .print-header {
+                text-align: center;
+                margin-bottom: 20px;
+            }
+            
+            .print-title {
+                font-size: 24px;
+                font-weight: bold;
+                color: #065f46;
+                margin-bottom: 5px;
+            }
+            
+            .print-subtitle {
+                font-size: 14px;
+                color: #6b7280;
+                margin-bottom: 15px;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-emerald-50 via-white to-green-50 text-gray-900 min-h-screen">
+
+    {% include "navbar.html" %}
+
+    <div class="pt-32 px-6 md:px-12 lg:px-20 pb-12">
+        <!-- Page Header -->
+        <div class="mb-8 text-center">
+            <h1 class="text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-700 to-green-600 mb-2">
+                History Record
+            </h1>
+            <p class="text-gray-600 text-sm md:text-base">View and filter historical mango sorting data</p>
+        </div>
+
+        <!-- Controls Section -->
+        <div class="bg-white rounded-2xl shadow-lg p-6 mb-6 no-print">
+            <div class="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+                <!-- Back Button -->
+                <a href="/record" class="inline-flex items-center gap-2 bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-500 hover:to-yellow-600 px-6 py-2.5 rounded-lg text-emerald-900 font-semibold transition-all duration-200 shadow-md hover:shadow-lg">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                    </svg>
+                    Back to Record
+                </a>
+
+                <!-- Filter Controls -->
+                <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center w-full lg:w-auto">
+                    <label for="month-picker" class="text-emerald-900 font-semibold text-sm whitespace-nowrap">Filter by Month:</label>
+                    <div class="flex gap-2 flex-wrap">
+                        <input type="month" id="month-picker" class="border-2 border-emerald-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 rounded-lg px-3 py-2 text-gray-900 text-sm transition-all">
+                        <button id="filter-button" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg text-sm">
+                            Apply
+                        </button>
+                        <button id="clear-button" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-5 py-2 rounded-lg font-medium transition-all duration-200 text-sm">
+                            Clear
+                        </button>
+                        <button id="download-button" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg inline-flex items-center gap-2 text-sm">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                            </svg>
+                            Print
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Search Bar -->
+            <div class="mt-4">
+                <div class="relative">
+                    <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
+                    <input id="search-date" type="text" placeholder="Search by date (e.g., July, September 1, 2025)" class="pl-10 pr-4 py-3 w-full border-2 border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 rounded-lg text-gray-900 transition-all" />
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Table Section -->
+        <div class="bg-white rounded-2xl shadow-lg overflow-hidden print-container">
+            <!-- Table Header -->
+            <div class="bg-gradient-to-r from-emerald-600 to-green-600 px-6 py-4 flex justify-between items-center">
+                <h2 class="text-xl font-bold text-white">
+                    MANGO<span class="text-yellow-300">LENS</span>
+                    <span class="text-sm font-normal ml-2 opacity-90">Smart Classification</span>
+                </h2>
+                <p id="month-label" class="text-white text-sm font-medium bg-white/20 px-4 py-1.5 rounded-full">
+                    Month: All
+                </p>
+            </div>
+
+            <!-- Table Content -->
+            <div class="overflow-x-auto">
+                <table id="history-table-wrapper" class="w-full text-sm">
+                    <thead>
+                        <tr class="bg-emerald-700 text-white">
+                            <th class="px-6 py-4 text-left font-semibold border-r border-emerald-600">Date</th>
+                            <th class="px-6 py-4 text-left font-semibold border-r border-emerald-600">Variety</th>
+                            <th class="px-6 py-4 text-left font-semibold">Count</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-table" class="divide-y divide-gray-200">
+                        <!-- Filled by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Added Firebase SDK scripts for real-time database connection -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyCoYkWwdq7wm5nhUjGZ47FtUm1XDyVzOsQ",
+            authDomain: "mango-lens.firebaseapp.com",
+            databaseURL: "https://mango-lens-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "mango-lens",
+            storageBucket: "mango-lens.firebasestorage.app",
+            messagingSenderId: "1044561936701",
+            appId: "1:1044561936701:web:c3e6f459c0c22a17af0554"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        const dummyData = [
+            // JULY
+            { date: "July 1, 2025", variety: "Pico", count: 200 },
+            { date: "July 1, 2025", variety: "Kinalabao", count: 170 },
+            { date: "July 5, 2025", variety: "Pico", count: 185 },
+            { date: "July 5, 2025", variety: "Kinalabao", count: 210 },
+
+            // AUGUST
+            { date: "August 2, 2025", variety: "Pico", count: 190 },
+            { date: "August 2, 2025", variety: "Kinalabao", count: 220 },
+            { date: "August 8, 2025", variety: "Pico", count: 175 },
+            { date: "August 8, 2025", variety: "Kinalabao", count: 200 },
+
+            // September
+            { date: "September 1, 2025", variety: "Pico", count: 180 },
+            { date: "September 1, 2025", variety: "Kinalabao", count: 210 },
+            { date: "September 2, 2025", variety: "Pico", count: 120 },
+            { date: "September 2, 2025", variety: "Kinalabao", count: 100 }
+        ];
+
+        let historyData = dummyData; // Start with dummy data
+
+        const table = document.getElementById("history-table");
+        const searchInput = document.getElementById("search-date");
+        const monthPicker = document.getElementById("month-picker");
+        const filterButton = document.getElementById("filter-button");
+        const clearButton = document.getElementById("clear-button");
+        const downloadButton = document.getElementById("download-button");
+        const monthLabel = document.getElementById("month-label");
+
+        let currentMonthFilter = "";
+
+        function convertFirebaseDateToDisplay(dateStr) {
+            if (!dateStr || dateStr === "Unknown") return dateStr;
+            
+            // Check if already in display format
+            if (dateStr.includes(",")) return dateStr;
+            
+            // Convert from YYYY-MM-DD to "Month Day, Year"
+            const [year, month, day] = dateStr.split("-");
+            const date = new Date(year, parseInt(month) - 1, parseInt(day));
+            const monthName = date.toLocaleString('default', { month: 'long' });
+            return `${monthName} ${parseInt(day)}, ${year}`;
+        }
+
+        function extractMonthFromDate(dateStr) {
+            const parts = dateStr.split(" ");
+            const month = parts[0];
+            const year = parts[2];
+            const monthMap = {
+                January: "01", February: "02", March: "03", April: "04",
+                May: "05", June: "06", July: "07", August: "08",
+                September: "09", October: "10", November: "11", December: "12"
+            };
+            return `${year}-${monthMap[month] || "00"}`;
+        }
+
+        function sortDataByDate(data) {
+            return data.slice().sort((a, b) => new Date(a.date) - new Date(b.date));
+        }
+
+        function populateTable(data) {
+            table.innerHTML = "";
+            const sorted = sortDataByDate(data);
+            if (sorted.length === 0) {
+                const row = table.insertRow();
+                row.innerHTML = `<td colspan="3" class="text-center py-8 text-gray-500 font-medium">No records found.</td>`;
+                return;
+            }
+            sorted.forEach(({ date, variety, count }, index) => {
+                const row = table.insertRow();
+                const bgClass = index % 2 === 0 ? 'bg-gray-50' : 'bg-white';
+                row.className = `${bgClass} hover:bg-emerald-50 transition-colors duration-150`;
+                row.innerHTML = `
+                    <td class="px-6 py-4 border-r border-gray-200 font-medium text-gray-700">${date}</td>
+                    <td class="px-6 py-4 border-r border-gray-200">
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${variety === 'Pico' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}">
+                            ${variety}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 font-semibold text-gray-900">${count}</td>`;
+            });
+        }
+
+        function filterData() {
+            const searchText = searchInput.value.toLowerCase();
+            const selectedMonth = currentMonthFilter;
+
+            return historyData.filter(record => {
+                const recordMonth = extractMonthFromDate(record.date);
+                const matchesMonth = !selectedMonth || recordMonth === selectedMonth;
+                const matchesSearch = record.date.toLowerCase().includes(searchText);
+                return matchesMonth && matchesSearch;
+            });
+        }
+
+        searchInput.addEventListener("input", () => {
+            populateTable(filterData());
+        });
+
+        filterButton.addEventListener("click", () => {
+            const selected = monthPicker.value;
+            if (selected) {
+                const [year, monthNum] = selected.split("-");
+                const date = new Date(`${selected}-01`);
+                const monthName = date.toLocaleString('default', { month: 'long' });
+                currentMonthFilter = selected;
+                monthLabel.textContent = `Month: ${monthName} ${year}`;
+            } else {
+                currentMonthFilter = "";
+                monthLabel.textContent = "Month: All";
+            }
+            populateTable(filterData());
+        });
+
+        clearButton.addEventListener("click", () => {
+            monthPicker.value = "";
+            currentMonthFilter = "";
+            searchInput.value = "";
+            monthLabel.textContent = "Month: All";
+            populateTable(historyData);
+        });
+
+        downloadButton.addEventListener("click", () => {
+            const data = filterData();
+            if (data.length === 0) {
+                alert("No records to print.");
+                return;
+            }
+
+            const sorted = sortDataByDate(data);
+            
+            let tableHTML = `
+                <table border="1" style="border-collapse:collapse; width:100%; font-family:'Inter', Arial, sans-serif; margin-top: 20px;">
+                    <thead>
+                        <tr style="background:#065f46; color:white;">
+                            <th style="padding: 12px; text-align: left; font-weight: 600;">Date</th>
+                            <th style="padding: 12px; text-align: left; font-weight: 600;">Variety</th>
+                            <th style="padding: 12px; text-align: left; font-weight: 600;">Count</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+            
+            sorted.forEach(({ date, variety, count }, i) => {
+                const bg = i % 2 === 0 ? "#f9fafb" : "white";
+                tableHTML += `
+                    <tr style="background:${bg};">
+                        <td style="padding: 10px; border: 1px solid #e5e7eb;">${date}</td>
+                        <td style="padding: 10px; border: 1px solid #e5e7eb;">${variety}</td>
+                        <td style="padding: 10px; border: 1px solid #e5e7eb; font-weight: 600;">${count}</td>
+                    </tr>`;
+            });
+            tableHTML += `</tbody></table>`;
+
+            const monthText = monthLabel.textContent;
+            const header = `
+                <div style="text-align:center; margin-bottom: 30px;">
+                    <h1 style="font-size: 32px; font-weight: bold; color:#065f46; font-family:'Inter', Arial, sans-serif; margin: 0;">
+                        MANGO<span style="color:#fbbf24;">LENS</span>
+                    </h1>
+                    <h2 style="font-size: 20px; font-weight: 600; color:#374151; margin: 15px 0 5px 0;">History Record</h2>
+                    <p style="font-size: 14px; color: #6b7280; margin: 0;">${monthText}</p>
+                </div>
+                <hr style="border: none; border-top: 2px solid #e5e7eb; margin: 20px 0;"/>`;
+
+            const content = header + tableHTML;
+
+            const previewWindow = window.open("", "_blank");
+            previewWindow.document.write(`
+                <html>
+                    <head>
+                        <title>History Record</title>
+                        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+                        <style>
+                            body { 
+                                font-family: 'Inter', Arial, sans-serif; 
+                                padding: 30px; 
+                                max-width: 900px; 
+                                margin: 0 auto;
+                            }
+                            @media print {
+                                body { padding: 20px; }
+                            }
+                        </style>
+                    </head>
+                    <body>${content}</body>
+                </html>
+            `);
+            previewWindow.document.close();
+            previewWindow.focus();
+            setTimeout(() => {
+                previewWindow.print();
+            }, 250);
+        });
+
+        db.ref("records").on("value", snapshot => {
+            const firebaseData = snapshot.val();
+            if (firebaseData && Object.keys(firebaseData).length > 0) {
+                // Firebase has data - use it
+                historyData = Object.values(firebaseData).map(record => ({
+                    date: convertFirebaseDateToDisplay(record.date || "Unknown"),
+                    variety: record.variety || "Unknown",
+                    count: record.count || 0
+                }));
+                
+                console.log("[v0] Using Firebase data:", historyData.length, "records");
+            } else {
+                // No Firebase data - use dummy data for testing
+                historyData = dummyData;
+                console.log("[v0] Using dummy data:", historyData.length, "records");
+            }
+            
+            // Update table with current data
+            populateTable(filterData());
+        });
+
+        // Initial load with dummy data
+        populateTable(historyData);
+    </script>
+</body>
+</html>

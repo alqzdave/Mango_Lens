@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MangoLens - Analytics Report</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .stat-card {
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+        
+        /* Fixed print styles to show content properly */
+        @media print {
+            /* Only hide navigation and buttons */
+            .no-print,
+            nav,
+            button {
+                display: none !important;
+            }
+            
+            /* Clean white background for print */
+            body {
+                background: white !important;
+                background-image: none !important;
+            }
+            
+            /* Remove top padding */
+            .pt-24 {
+                padding-top: 1rem !important;
+            }
+            
+            /* Compact header */
+            h1 {
+                font-size: 1.5rem !important;
+                margin-bottom: 0.5rem !important;
+            }
+            
+            .text-gray-600.text-lg {
+                font-size: 0.875rem !important;
+                margin-bottom: 1rem !important;
+            }
+            
+            /* Hide KPI cards for cleaner print */
+            .stat-card {
+                display: none !important;
+            }
+            
+            /* Ensure chart sections are visible and compact */
+            .bg-white.rounded-xl {
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+                box-shadow: none !important;
+                border: 1px solid #ddd !important;
+                padding: 1rem !important;
+                margin-bottom: 1rem !important;
+            }
+            
+            /* Keep titles close to charts */
+            .bg-white.rounded-xl h3 {
+                font-size: 1rem !important;
+                margin-bottom: 0.5rem !important;
+                color: #000 !important;
+            }
+            
+            /* Ensure charts are visible and properly sized */
+            .chart-container {
+                height: 250px !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+                display: block !important;
+                visibility: visible !important;
+            }
+            
+            .chart-container canvas {
+                max-width: 100% !important;
+                max-height: 250px !important;
+                display: block !important;
+                visibility: visible !important;
+            }
+            
+            /* Force single column for charts */
+            .grid.grid-cols-1.lg\\:grid-cols-2 {
+                display: block !important;
+            }
+            
+            .grid.grid-cols-1.lg\\:grid-cols-2 > div {
+                width: 100% !important;
+                margin-bottom: 1rem !important;
+                display: block !important;
+            }
+            
+            /* Table styling */
+            table {
+                page-break-inside: auto;
+                font-size: 0.875rem !important;
+                width: 100% !important;
+            }
+            
+            thead tr {
+                background: #374151 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            
+            th, td {
+                padding: 0.5rem !important;
+            }
+            
+            tr {
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+            
+            /* Ensure badges print with colors */
+            .bg-green-100,
+            .bg-yellow-100,
+            .bg-red-100,
+            .text-green-700,
+            .text-yellow-700,
+            .text-red-700 {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            
+            /* Page settings */
+            @page {
+                margin: 1.5cm;
+                size: A4 portrait;
+            }
+            
+            /* Keep titles with their content */
+            h3 {
+                page-break-after: avoid !important;
+            }
+            
+            /* Reduce excessive spacing */
+            .mb-8 {
+                margin-bottom: 1rem !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-emerald-50 via-green-50 to-lime-50 min-h-screen">
+    {% include "navbar.html" %}
+
+    <div class="pt-24 px-4 md:px-8 lg:px-12 pb-12">
+        <!-- Header Section -->
+        <div class="mb-8">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+                <div>
+                    <h1 class="text-4xl font-bold text-gray-900 mb-2">Analytics Report</h1>
+                    <p class="text-gray-600 text-lg">Mango Sorting Performance Dashboard</p>
+                </div>
+                <div class="mt-4 md:mt-0 flex items-center gap-4">
+                    <div class="bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-200">
+                        <p class="text-sm text-gray-500">Report Date</p>
+                        <p class="text-lg font-semibold text-gray-900" id="current-date"></p>
+                    </div>
+                    <button id="download-report" class="no-print bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white px-6 py-3 rounded-lg font-semibold shadow-md transition-all">
+                        Print Report
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- KPI Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <!-- Total Sorted -->
+            <div class="stat-card bg-white rounded-xl shadow-md p-6 border-l-4 border-emerald-500">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-500 uppercase tracking-wide">Total Sorted</p>
+                        <p class="text-3xl font-bold text-gray-900 mt-2" id="total-sorted">0</p>
+                    </div>
+                    <div class="bg-emerald-100 p-3 rounded-full">
+                        <svg class="w-8 h-8 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quality Score -->
+            <div class="stat-card bg-white rounded-xl shadow-md p-6 border-l-4 border-blue-500">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-500 uppercase tracking-wide">Quality Score</p>
+                        <p class="text-3xl font-bold text-gray-900 mt-2"><span id="quality-score">0</span>%</p>
+                    </div>
+                    <div class="bg-blue-100 p-3 rounded-full">
+                        <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Varieties Processed -->
+            <div class="stat-card bg-white rounded-xl shadow-md p-6 border-l-4 border-amber-500">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-500 uppercase tracking-wide">Varieties</p>
+                        <p class="text-3xl font-bold text-gray-900 mt-2" id="varieties-count">0</p>
+                    </div>
+                    <div class="bg-amber-100 p-3 rounded-full">
+                        <svg class="w-8 h-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ripe Percentage -->
+            <div class="stat-card bg-white rounded-xl shadow-md p-6 border-l-4 border-green-500">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-500 uppercase tracking-wide">Ripe Mangoes</p>
+                        <p class="text-3xl font-bold text-gray-900 mt-2"><span id="ripe-percentage">0</span>%</p>
+                    </div>
+                    <div class="bg-green-100 p-3 rounded-full">
+                        <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <!-- Ripeness Distribution by Variety -->
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Ripeness Distribution by Variety</h3>
+                <div class="chart-container">
+                    <canvas id="barChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Variety Proportion -->
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Variety Distribution</h3>
+                <div class="chart-container">
+                    <canvas id="pieChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Additional Charts -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <!-- Ripeness Quality Breakdown -->
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Overall Ripeness Quality</h3>
+                <div class="chart-container">
+                    <canvas id="doughnutChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Variety Comparison -->
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Variety Count Comparison</h3>
+                <div class="chart-container">
+                    <canvas id="horizontalBarChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Table -->
+        <div class="bg-white rounded-xl shadow-md p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold text-gray-900">Detailed Sorting Records</h3>
+                <a href="{{ url_for('history') }}" class="no-print bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-medium transition-colors">
+                    View History
+                </a>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="bg-gradient-to-r from-emerald-600 to-green-600 text-white">
+                            <th class="px-4 py-3 text-left font-semibold">Date</th>
+                            <th class="px-4 py-3 text-left font-semibold">Variety</th>
+                            <th class="px-4 py-3 text-left font-semibold">Ripeness</th>
+                            <th class="px-4 py-3 text-right font-semibold">Count</th>
+                        </tr>
+                    </thead>
+                    <tbody id="record-table" class="divide-y divide-gray-200">
+                        <!-- Filled by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyCoYkWwdq7wm5nhUjGZ47FtUm1XDyVzOsQ",
+            authDomain: "mango-lens-1fff8.firebaseapp.com",
+            databaseURL: "https://mango-lens-1fff8-default-rtdb.firebaseio.com",
+            projectId: "mango-lens-1fff8",
+            storageBucket: "mango-lens-1fff8.firebasestorage.app",
+            messagingSenderId: "1044561936701",
+            appId: "1:1044561936701:web:c3e6f459c0c22a17af0554"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        const today = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+        document.getElementById("current-date").innerText = today;
+
+        let records = [
+            { date: today, variety: "Carabao", ripeness: "Ripe", count: 12 },
+            { date: today, variety: "Carabao", ripeness: "Unripe", count: 7 },
+            { date: today, variety: "Pico", ripeness: "Ripe", count: 9 },
+            { date: today, variety: "Pico", ripeness: "Overripe", count: 3 },
+        ];
+
+        let barChart, pieChart, doughnutChart, horizontalBarChart;
+
+        // Calculate KPIs
+        function updateKPIs(data) {
+            const totalSorted = data.reduce((sum, item) => sum + item.count, 0);
+            const ripeCount = data.filter(item => item.ripeness === "Ripe").reduce((sum, item) => sum + item.count, 0);
+            const ripePercentage = totalSorted > 0 ? Math.round((ripeCount / totalSorted) * 100) : 0;
+            const varieties = [...new Set(data.map(item => item.variety))];
+            
+            // Quality score: (Ripe * 1.0 + Unripe * 0.5 + Overripe * 0.2) / Total
+            const unripeCount = data.filter(item => item.ripeness === "Unripe").reduce((sum, item) => sum + item.count, 0);
+            const overripeCount = data.filter(item => item.ripeness === "Overripe").reduce((sum, item) => sum + item.count, 0);
+            const qualityScore = totalSorted > 0 ? Math.round(((ripeCount * 1.0 + unripeCount * 0.5 + overripeCount * 0.2) / totalSorted) * 100) : 0;
+
+            document.getElementById("total-sorted").innerText = totalSorted;
+            document.getElementById("quality-score").innerText = qualityScore;
+            document.getElementById("varieties-count").innerText = varieties.length;
+            document.getElementById("ripe-percentage").innerText = ripePercentage;
+        }
+
+        // Render table
+        function renderTable(data) {
+            const tableBody = document.getElementById("record-table");
+            tableBody.innerHTML = "";
+            
+            data.forEach((item, index) => {
+                const rowClass = index % 2 === 0 ? "bg-gray-50" : "bg-white";
+                const ripenessColor = item.ripeness === "Ripe" ? "text-green-700 bg-green-100" :
+                                     item.ripeness === "Unripe" ? "text-yellow-700 bg-yellow-100" :
+                                     "text-red-700 bg-red-100";
+                
+                let row = `<tr class="${rowClass} hover:bg-gray-100 transition-colors">
+                    <td class="px-4 py-3 text-gray-700">${item.date}</td>
+                    <td class="px-4 py-3 font-medium text-gray-900">${item.variety}</td>
+                    <td class="px-4 py-3">
+                        <span class="px-3 py-1 rounded-full text-xs font-semibold ${ripenessColor}">
+                            ${item.ripeness}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3 text-right font-semibold text-gray-900">${item.count}</td>
+                </tr>`;
+                tableBody.innerHTML += row;
+            });
+        }
+
+        // Professional color schemes
+        const varietyColors = {
+            'Carabao': '#10b981',
+            'Pico': '#f59e0b',
+            'Indian': '#ef4444',
+            'default': '#6366f1'
+        };
+
+        const ripenessColors = {
+            'Ripe': '#22c55e',
+            'Unripe': '#eab308',
+            'Overripe': '#ef4444'
+        };
+
+        // Render all charts
+        function renderCharts(data) {
+            const varieties = [...new Set(data.map(item => item.variety))];
+            const ripenessTypes = [...new Set(data.map(item => item.ripeness))];
+
+            // Bar Chart - Ripeness Distribution by Variety
+            const barDatasets = ripenessTypes.map(ripeness => ({
+                label: ripeness,
+                data: varieties.map(v =>
+                    data.filter(d => d.variety === v && d.ripeness === ripeness)
+                        .reduce((sum, d) => sum + d.count, 0)
+                ),
+                backgroundColor: ripenessColors[ripeness] || '#6366f1',
+                borderRadius: 6,
+                borderSkipped: false,
+            }));
+
+            if (barChart) barChart.destroy();
+            const barCtx = document.getElementById("barChart").getContext("2d");
+            barChart = new Chart(barCtx, {
+                type: "bar",
+                data: { labels: varieties, datasets: barDatasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: "bottom",
+                            labels: {
+                                padding: 15,
+                                font: { size: 12, weight: '500' },
+                                usePointStyle: true,
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 12,
+                            titleFont: { size: 14, weight: 'bold' },
+                            bodyFont: { size: 13 },
+                            cornerRadius: 8,
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { display: false },
+                            ticks: { font: { size: 12, weight: '500' } }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: 'rgba(0, 0, 0, 0.05)' },
+                            ticks: { font: { size: 12 } }
+                        }
+                    }
+                }
+            });
+
+            // Pie Chart - Variety Proportion
+            const pieData = varieties.map(v =>
+                data.filter(d => d.variety === v).reduce((sum, d) => sum + d.count, 0)
+            );
+            const pieColors = varieties.map(v => varietyColors[v] || varietyColors.default);
+
+            if (pieChart) pieChart.destroy();
+            const pieCtx = document.getElementById("pieChart").getContext("2d");
+            pieChart = new Chart(pieCtx, {
+                type: "pie",
+                data: {
+                    labels: varieties,
+                    datasets: [{
+                        data: pieData,
+                        backgroundColor: pieColors,
+                        borderWidth: 3,
+                        borderColor: '#ffffff',
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: "bottom",
+                            labels: {
+                                padding: 15,
+                                font: { size: 12, weight: '500' },
+                                usePointStyle: true,
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 12,
+                            titleFont: { size: 14, weight: 'bold' },
+                            bodyFont: { size: 13 },
+                            cornerRadius: 8,
+                            callbacks: {
+                                label: function(context) {
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((context.parsed / total) * 100).toFixed(1);
+                                    return `${context.label}: ${context.parsed} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Doughnut Chart - Overall Ripeness Quality
+            const ripenessData = ripenessTypes.map(ripeness =>
+                data.filter(d => d.ripeness === ripeness).reduce((sum, d) => sum + d.count, 0)
+            );
+            const ripenessColorArray = ripenessTypes.map(r => ripenessColors[r] || '#6366f1');
+
+            if (doughnutChart) doughnutChart.destroy();
+            const doughnutCtx = document.getElementById("doughnutChart").getContext("2d");
+            doughnutChart = new Chart(doughnutCtx, {
+                type: "doughnut",
+                data: {
+                    labels: ripenessTypes,
+                    datasets: [{
+                        data: ripenessData,
+                        backgroundColor: ripenessColorArray,
+                        borderWidth: 3,
+                        borderColor: '#ffffff',
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: "bottom",
+                            labels: {
+                                padding: 15,
+                                font: { size: 12, weight: '500' },
+                                usePointStyle: true,
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 12,
+                            titleFont: { size: 14, weight: 'bold' },
+                            bodyFont: { size: 13 },
+                            cornerRadius: 8,
+                            callbacks: {
+                                label: function(context) {
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((context.parsed / total) * 100).toFixed(1);
+                                    return `${context.label}: ${context.parsed} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Horizontal Bar Chart - Variety Comparison
+            const varietyData = varieties.map(v =>
+                data.filter(d => d.variety === v).reduce((sum, d) => sum + d.count, 0)
+            );
+
+            if (horizontalBarChart) horizontalBarChart.destroy();
+            const horizontalBarCtx = document.getElementById("horizontalBarChart").getContext("2d");
+            horizontalBarChart = new Chart(horizontalBarCtx, {
+                type: "bar",
+                data: {
+                    labels: varieties,
+                    datasets: [{
+                        label: "Total Count",
+                        data: varietyData,
+                        backgroundColor: pieColors,
+                        borderRadius: 6,
+                        borderSkipped: false,
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 12,
+                            titleFont: { size: 14, weight: 'bold' },
+                            bodyFont: { size: 13 },
+                            cornerRadius: 8,
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            grid: { color: 'rgba(0, 0, 0, 0.05)' },
+                            ticks: { font: { size: 12 } }
+                        },
+                        y: {
+                            grid: { display: false },
+                            ticks: { font: { size: 12, weight: '500' } }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Initialize
+        updateKPIs(records);
+        renderTable(records);
+        renderCharts(records);
+
+        // Firebase listener
+        db.ref("records").on("value", snapshot => {
+            const firebaseData = snapshot.val();
+            if (firebaseData) {
+                const newRecords = Object.values(firebaseData).filter(item => item.date === today);
+                if (newRecords.length > 0) {
+                    records = newRecords;
+                }
+                updateKPIs(records);
+                renderTable(records);
+                renderCharts(records);
+            }
+        });
+
+        // Print functionality
+        document.getElementById("download-report").addEventListener("click", () => {
+            setTimeout(() => {
+                window.print();
+            }, 500);
+        });
+    </script>
+</body>
+</html>
