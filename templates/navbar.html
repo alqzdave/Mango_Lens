@@ -108,13 +108,13 @@
     </nav>
     
     <!-- Mobile Menu Overlay (Sidebar Drawer from Right) -->
-    <div id="mobile-menu" class="lg:hidden fixed inset-0 z-40 invisible opacity-0 transition-opacity duration-300">
+    <div id="mobile-menu" class="lg:hidden fixed inset-0 z-[60] invisible opacity-0 transition-opacity duration-300">
         <!-- Dark backdrop -->
         <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="document.getElementById('mobile-menu').classList.add('invisible', 'opacity-0'); document.getElementById('menu-sidebar').classList.add('translate-x-full');"></div>
         
         <!-- Sidebar drawer -->
         <div id="menu-sidebar" class="absolute top-0 right-0 h-full w-72 bg-gradient-to-br from-green-800 to-green-900 shadow-2xl transform translate-x-full transition-transform duration-300 ease-in-out">
-            <div class="flex flex-col h-full pt-20 px-6">
+            <div class="flex flex-col h-full pt-6 px-6">
                 <a href="{{ url_for('index') }}" data-nav="home-mobile" class="flex items-center space-x-4 text-white text-base font-semibold py-4 border-b border-green-600/30 hover:text-yellow-400 hover:bg-green-700/30 px-4 rounded transition-all">
                     <i class="fas fa-home w-5"></i>
                     <span>Home</span>

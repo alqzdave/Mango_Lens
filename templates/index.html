@@ -17,7 +17,13 @@
             scroll-behavior: smooth;
         }
         #about-section {
-            scroll-margin-top: 220px;
+            scroll-margin-top: 80px;
+        }
+        
+        @media (min-width: 768px) {
+            #about-section {
+                scroll-margin-top: 220px;
+            }
         }
         
         .team-card {
@@ -88,17 +94,23 @@
     {% include 'navbar.html' %}
 
     <!-- Hero Section -->
-    <section class="relative w-screen h-screen flex justify-center items-center overflow-hidden m-0 p-0">
-        <video autoplay loop muted playsinline preload="auto" class="absolute top-0 left-0 w-full h-full object-cover m-0 p-0">
+    <section class="relative w-screen aspect-video md:h-screen flex justify-center md:justify-start items-center overflow-hidden mt-20 md:mt-0 p-0 bg-black">
+        <video autoplay loop muted playsinline preload="auto" class="absolute top-0 left-0 w-full h-full object-contain md:object-cover m-0 p-0">
             <source src="{{ url_for('static', filename='MANGO.mp4') }}" type="video/mp4">
             <source src="{{ url_for('static', filename='MANGO.webm') }}" type="video/webm">
             Your browser does not support the video tag.
         </video>
-        <div class="absolute inset-0 bg-gradient-to-l from-transparent to-green-900"></div>
-        <div class="relative z-10 w-full md:w-1/2 space-y-2 md:space-y-4 px-4 md:pl-12">
-            <h3 class="text-yellow-400 text-base sm:text-xl md:text-2xl font-bold italic">IoT-Enabled Automated</h3>
-            <h1 class="text-white text-2xl sm:text-4xl md:text-6xl font-extrabold leading-tight">Variety Recognition <span class="text-yellow-400">and</span> Maturity-Based Sorting</h1>
-            <p class="text-gray-300 text-sm sm:text-base md:text-lg">Farmers Organization for the Rural Upliftment of Mindoro Agri. Corporation</p>
+        <div class="absolute inset-0 bg-gradient-to-l from-transparent to-green-900/80"></div>
+        <div class="absolute z-10 w-full md:w-1/2 space-y-2 md:space-y-4 px-6 md:pl-12 md:left-0">
+            <h3 class="text-yellow-400 text-xs sm:text-sm md:text-2xl font-bold italic">IoT-Enabled Automated</h3>
+            <h1 class="text-white text-base sm:text-xl md:text-6xl font-extrabold leading-tight">
+                Variety Recognition <span class="text-yellow-400">&</span> 
+                <br class="md:hidden">
+                Maturity-Based Sorting
+            </h1>
+            <p class="text-gray-300 text-xs sm:text-sm md:text-lg">
+                Farmers Organization for the Rural <br class="md:hidden">Upliftment of Mindoro Agri. Corporation
+            </p>
 
             <div class="mt-4 md:mt-6 flex space-x-3 md:space-x-4">
                 <button id="team-btn" class="bg-yellow-400 text-green-900 px-4 py-2 md:px-6 md:py-3 rounded-lg text-sm md:text-lg font-semibold hover:bg-yellow-500 transition duration-300">
@@ -129,7 +141,7 @@
                 <div>
                     <img src="{{ url_for('static', filename='objectives.png') }}" alt="Core Values Icon" class="mx-auto h-12 md:h-16 mb-4">
                     <h2 class="text-xl md:text-2xl font-bold">OBJECTIVES</h2>
-                    <ul class="mt-4 text-base md:text-lg space-y-2 text-left max-w-xs mx-auto">
+                    <ul class="mt-4 text-base md:text-lg space-y-2 text-center list-none max-w-xs mx-auto">
                         <li>Develop an automated mango sorting system</li>
                         <li>Classify mango varieties</li>
                         <li>Detect mango ripeness</li>
