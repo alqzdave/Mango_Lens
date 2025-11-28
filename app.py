@@ -2,15 +2,21 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 import firebase_admin
 from firebase_admin import credentials, auth, db, firestore
 from functools import wraps
+import os
+import json
 
 app = Flask(__name__)
 app.secret_key = "2058a9b39e411a8444c125cf0ea243fc"
 
+# Use environment variable for Firebase credentials in production
+if os.getenv('FIREBASE_CREDENTIALS'):
+    # DigitalOcean: credentials from environment variable
+    cred_dict = json.loads(os.getenv('FIREBASE_CREDENTIALS'))
+    cred = credentials.Certificate(cred_dict)
+else:
+    # Local development: use serviceAccountKey.json file
+    cred = credentials.Certificate("serviceAccountKey.json")
 
-cred = credentials.Certificate("serviceAccountKey.json")
-# firebase_admin.initialize_app(cred)
-
-# cred = credentials.Certificate('C:\\Users\\ACER\\Downloads\\mango-lens-1fff8-firebase-adminsdk-fbsvc-c296e11245.json')
 firebase_admin.initialize_app(cred, {
     'databaseURL': 'https://mango-lens-1fff8-default-rtdb.firebaseio.com'
 })
