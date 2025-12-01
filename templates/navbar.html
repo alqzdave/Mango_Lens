@@ -72,6 +72,7 @@
     </div>
         
         <!-- Desktop Navigation -->
+        {% if user_role %}
         <div class="hidden lg:flex items-center space-x-8" id="menu">
             <a href="{{ url_for('index') }}" data-nav="home-desktop" class="nav-link text-lg font-semibold px-4 py-2 rounded-lg flex items-center space-x-2">
                 <i class="fas fa-home text-sm"></i>
@@ -100,14 +101,18 @@
                 </a>
             </div>
         </div>
+        {% endif %}
         
         <!-- Mobile Menu Button -->
+        {% if user_role %}
         <button id="menu-btn" class="lg:hidden hamburger p-2 rounded-lg hover:bg-green-700/50">
             <i class="fas fa-bars text-2xl"></i>
         </button>
+        {% endif %}
     </nav>
     
     <!-- Mobile Menu Overlay (Sidebar Drawer from Right) -->
+    {% if user_role %}
     <div id="mobile-menu" class="lg:hidden fixed inset-0 z-[60] invisible opacity-0 transition-opacity duration-300">
         <!-- Dark backdrop -->
         <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="document.getElementById('mobile-menu').classList.add('invisible', 'opacity-0'); document.getElementById('menu-sidebar').classList.add('translate-x-full');"></div>
@@ -144,8 +149,10 @@
             </div>
         </div>
     </div>
+    {% endif %}
 
     <script>
+        {% if user_role %}
         const menuBtn = document.getElementById('menu-btn');
         const mobileMenu = document.getElementById('mobile-menu');
         const menuSidebar = document.getElementById('menu-sidebar');
@@ -168,6 +175,7 @@
                 }, 300);
             });
         });
+        {% endif %}
 
         function handleHomeClick(event) {
             // Check if on the home/index page

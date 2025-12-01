@@ -60,16 +60,17 @@ def owner_required(f):
 
 
 @app.route('/')
-@login_required
 def index():
-    # Get user role from Firestore
-    user_ref = firestore_db.collection('users').document(session['user_uid'])
-    user_doc = user_ref.get()
-    user_role = 'facilitator'  # default
-    
-    if user_doc.exists:
-        user_data = user_doc.to_dict()
-        user_role = user_data.get('role', 'facilitator')
+    # Check if user is logged in
+    user_role = None
+    if 'user_uid' in session:
+        # Get user role from Firestore
+        user_ref = firestore_db.collection('users').document(session['user_uid'])
+        user_doc = user_ref.get()
+        
+        if user_doc.exists:
+            user_data = user_doc.to_dict()
+            user_role = user_data.get('role', 'facilitator')
     
     return render_template('index.html', user_role=user_role)
 

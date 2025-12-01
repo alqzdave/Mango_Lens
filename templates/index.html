@@ -116,9 +116,15 @@
                 <button id="team-btn" class="bg-yellow-400 text-green-900 px-4 py-2 md:px-6 md:py-3 rounded-lg text-sm md:text-lg font-semibold hover:bg-yellow-500 transition duration-300">
                     Team
                 </button>
+                {% if user_role %}
                 <button class="border-2 border-yellow-400 text-yellow-400 px-4 py-2 md:px-6 md:py-3 rounded-lg text-sm md:text-lg font-semibold hover:bg-yellow-400 hover:text-green-900 transition duration-300">
                     Contact Us
                 </button>
+                {% else %}
+                <a href="{{ url_for('login') }}" class="border-2 border-yellow-400 text-yellow-400 px-4 py-2 md:px-6 md:py-3 rounded-lg text-sm md:text-lg font-semibold hover:bg-yellow-400 hover:text-green-900 transition duration-300">
+                    Sign In
+                </a>
+                {% endif %}
             </div>
         </div>
         <div class="relative z-10 w-1/2 hidden md:block"></div>
@@ -157,7 +163,11 @@
     <!-- Professional Team Section -->
     <section id="team-section" class="w-full bg-gray-100 text-green-900 py-12 md:py-20 px-4">
         <div class="max-w-6xl mx-auto text-center">
-            <h2 class="text-3xl md:text-4xl font-bold mb-8 md:mb-10">Meet The Team</h2>
+            <div class="mb-8 md:mb-12">
+                <p class="text-green-600 text-sm md:text-base font-semibold uppercase tracking-wider mb-2">Our Amazing</p>
+                <h2 class="text-4xl md:text-5xl font-extrabold bg-gradient-to-r from-green-800 to-green-600 bg-clip-text text-transparent mb-4">Meet The Team</h2>
+                <div class="w-24 h-1 bg-gradient-to-r from-yellow-400 to-green-600 mx-auto"></div>
+            </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
                 
                 <!-- Team Member 1 -->
@@ -215,5 +225,20 @@
             </div>
         </div>
     </section>
+
+    <!-- Footer -->
+    <footer class="w-full bg-gray-800 text-white py-8">
+        <div class="max-w-6xl mx-auto px-4 text-center">
+            <div class="mb-4">
+                <h3 class="text-2xl font-bold">MANGO<span class="text-yellow-400">LENS</span></h3>
+                <p class="text-gray-300 text-sm mt-1">IoT-Enabled Mango Sorting System</p>
+            </div>
+            <div class="border-t border-gray-600 pt-4 mt-4">
+                <p class="text-sm text-gray-400">
+                    © 2025 MangoLens. All rights reserved. | Farmers Organization for the Rural Upliftment of Mindoro Agri. Corporation
+                </p>
+            </div>
+        </div>
+    </footer>
 </body>
 </html>
