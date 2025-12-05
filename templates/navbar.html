@@ -82,6 +82,10 @@
                 <i class="fas fa-info-circle text-sm"></i>
                 <span>About</span>
             </a>
+            <a href="{{ url_for('sorting') }}" class="nav-link text-lg font-semibold px-4 py-2 rounded-lg flex items-center space-x-2">
+                <i class="fas fa-camera text-sm"></i>
+                <span>Sorting</span>
+            </a>
             <a href="{{ url_for('record') }}" class="nav-link text-lg font-semibold px-4 py-2 rounded-lg flex items-center space-x-2">
                 <i class="fas fa-chart-bar text-sm"></i>
                 <span>Records</span>
@@ -127,6 +131,10 @@
                 <a href="{{ url_for('index') }}#about-section" data-nav="about-mobile" class="flex items-center space-x-4 text-white text-base font-semibold py-4 border-b border-green-600/30 hover:text-yellow-400 hover:bg-green-700/30 px-4 rounded transition-all">
                     <i class="fas fa-info-circle w-5"></i>
                     <span>About</span>
+                </a>
+                <a href="{{ url_for('sorting') }}" class="flex items-center space-x-4 text-white text-base font-semibold py-4 border-b border-green-600/30 hover:text-yellow-400 hover:bg-green-700/30 px-4 rounded transition-all">
+                    <i class="fas fa-camera w-5"></i>
+                    <span>Sorting</span>
                 </a>
                 <a href="{{ url_for('record') }}" class="flex items-center space-x-4 text-white text-base font-semibold py-4 border-b border-green-600/30 hover:text-yellow-400 hover:bg-green-700/30 px-4 rounded transition-all">
                     <i class="fas fa-chart-bar w-5"></i>

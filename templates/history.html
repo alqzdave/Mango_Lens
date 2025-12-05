@@ -137,8 +137,8 @@
                     <thead>
                         <tr class="bg-emerald-700 text-white">
                             <th class="px-6 py-4 text-left font-semibold border-r border-emerald-600">Date</th>
-                            <th class="px-6 py-4 text-left font-semibold border-r border-emerald-600">Variety</th>
-                            <th class="px-6 py-4 text-left font-semibold">Count</th>
+                            <th class="px-6 py-4 text-left font-semibold border-r border-emerald-600">Carabao</th>
+                            <th class="px-6 py-4 text-left font-semibold">Pico</th>
                         </tr>
                     </thead>
                     <tbody id="history-table" class="divide-y divide-gray-200">
@@ -228,26 +228,52 @@
             return data.slice().sort((a, b) => new Date(a.date) - new Date(b.date));
         }
 
+        function groupByDate(data) {
+            const grouped = {};
+            data.forEach(({ date, variety, count }) => {
+                if (!grouped[date]) {
+                    grouped[date] = { Carabao: 0, Pico: 0 };
+                }
+                if (variety === 'Carabao' || variety === 'Kinalabao') {
+                    grouped[date].Carabao += count;
+                } else if (variety === 'Pico') {
+                    grouped[date].Pico += count;
+                }
+            });
+            return grouped;
+        }
+
         function populateTable(data) {
             table.innerHTML = "";
-            const sorted = sortDataByDate(data);
-            if (sorted.length === 0) {
+            if (data.length === 0) {
                 const row = table.insertRow();
                 row.innerHTML = `<td colspan="3" class="text-center py-8 text-gray-500 font-medium">No records found.</td>`;
                 return;
             }
-            sorted.forEach(({ date, variety, count }, index) => {
+            
+            const grouped = groupByDate(data);
+            const dates = Object.keys(grouped).sort((a, b) => new Date(a) - new Date(b));
+            
+            dates.forEach((date, index) => {
                 const row = table.insertRow();
                 const bgClass = index % 2 === 0 ? 'bg-gray-50' : 'bg-white';
                 row.className = `${bgClass} hover:bg-emerald-50 transition-colors duration-150`;
+                
+                const carabaoCount = grouped[date].Carabao;
+                const picoCount = grouped[date].Pico;
+                
                 row.innerHTML = `
                     <td class="px-6 py-4 border-r border-gray-200 font-medium text-gray-700">${date}</td>
                     <td class="px-6 py-4 border-r border-gray-200">
-                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${variety === 'Pico' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}">
-                            ${variety}
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
+                            ${carabaoCount}
                         </span>
                     </td>
-                    <td class="px-6 py-4 font-semibold text-gray-900">${count}</td>`;
+                    <td class="px-6 py-4">
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">
+                            ${picoCount}
+                        </span>
+                    </td>`;
             });
         }
 
@@ -299,24 +325,30 @@
 
             const sorted = sortDataByDate(data);
             
+            const grouped = groupByDate(sorted);
+            const dates = Object.keys(grouped).sort((a, b) => new Date(a) - new Date(b));
+            
             let tableHTML = `
                 <table border="1" style="border-collapse:collapse; width:100%; font-family:'Inter', Arial, sans-serif; margin-top: 20px;">
                     <thead>
                         <tr style="background:#065f46; color:white;">
                             <th style="padding: 12px; text-align: left; font-weight: 600;">Date</th>
-                            <th style="padding: 12px; text-align: left; font-weight: 600;">Variety</th>
-                            <th style="padding: 12px; text-align: left; font-weight: 600;">Count</th>
+                            <th style="padding: 12px; text-align: left; font-weight: 600;">Carabao</th>
+                            <th style="padding: 12px; text-align: left; font-weight: 600;">Pico</th>
                         </tr>
                     </thead>
                     <tbody>`;
             
-            sorted.forEach(({ date, variety, count }, i) => {
+            dates.forEach((date, i) => {
                 const bg = i % 2 === 0 ? "#f9fafb" : "white";
+                const carabaoCount = grouped[date].Carabao;
+                const picoCount = grouped[date].Pico;
+                
                 tableHTML += `
                     <tr style="background:${bg};">
                         <td style="padding: 10px; border: 1px solid #e5e7eb;">${date}</td>
-                        <td style="padding: 10px; border: 1px solid #e5e7eb;">${variety}</td>
-                        <td style="padding: 10px; border: 1px solid #e5e7eb; font-weight: 600;">${count}</td>
+                        <td style="padding: 10px; border: 1px solid #e5e7eb; font-weight: 600;">${carabaoCount}</td>
+                        <td style="padding: 10px; border: 1px solid #e5e7eb; font-weight: 600;">${picoCount}</td>
                     </tr>`;
             });
             tableHTML += `</tbody></table>`;
@@ -362,21 +394,33 @@
             }, 250);
         });
 
+        // Get today's date string for filtering
+        function getTodayDateString() {
+            const today = new Date();
+            const options = { year: 'numeric', month: 'long', day: 'numeric' };
+            return today.toLocaleDateString('en-US', options);
+        }
+
         db.ref("records").on("value", snapshot => {
             const firebaseData = snapshot.val();
+            const todayDate = getTodayDateString();
+            
             if (firebaseData && Object.keys(firebaseData).length > 0) {
-                // Firebase has data - use it
-                historyData = Object.values(firebaseData).map(record => ({
-                    date: convertFirebaseDateToDisplay(record.date || "Unknown"),
-                    variety: record.variety || "Unknown",
-                    count: record.count || 0
-                }));
+                // Firebase has data - filter out today's records (show only past)
+                historyData = Object.values(firebaseData)
+                    .map(record => ({
+                        date: convertFirebaseDateToDisplay(record.date || "Unknown"),
+                        variety: record.variety || "Unknown",
+                        count: record.count || 0
+                    }))
+                    .filter(record => record.date !== todayDate); // Exclude today
                 
-                console.log("[v0] Using Firebase data:", historyData.length, "records");
+                console.log("[History Page] Showing past dates only (excluding today)");
+                console.log("[History Page] Past records:", historyData.length);
             } else {
                 // No Firebase data - use dummy data for testing
                 historyData = dummyData;
-                console.log("[v0] Using dummy data:", historyData.length, "records");
+                console.log("[History Page] Using dummy data:", historyData.length, "records");
             }
             
             // Update table with current data

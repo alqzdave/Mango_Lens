@@ -186,6 +186,23 @@
         </div>
 
         <!-- KPI Cards -->
+        <!-- No Data Warning (hidden by default) -->
+        <div id="no-data-warning" class="hidden bg-yellow-50 border-l-4 border-yellow-400 p-6 mb-8 rounded-lg shadow-md">
+            <div class="flex items-start">
+                <div class="flex-shrink-0">
+                    <svg class="h-6 w-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                    </svg>
+                </div>
+                <div class="ml-3 flex-1">
+                    <h3 class="text-sm font-medium text-yellow-800">No sorting data for today</h3>
+                    <div class="mt-2 text-sm text-yellow-700">
+                        <p>No records found for <strong id="no-data-date"></strong>. Start sorting on the <a href="/sorting" class="font-semibold underline hover:text-yellow-900">Sorting page</a> to see data here.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <!-- Total Sorted -->
             <div class="stat-card bg-white rounded-xl shadow-md p-6 border-l-4 border-emerald-500">
@@ -327,20 +344,36 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        const today = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
-        document.getElementById("current-date").innerText = today;
+        // Test Firebase connection
+        console.log("[Record Page] Firebase initialized, testing connection...");
+        db.ref('.info/connected').on('value', (snap) => {
+            if (snap.val() === true) {
+                console.log("[Record Page] ✓ Firebase connected successfully");
+            } else {
+                console.error("[Record Page] ✗ Firebase not connected");
+            }
+        });
 
-        let records = [
-            { date: today, variety: "Carabao", ripeness: "Ripe", count: 12 },
-            { date: today, variety: "Carabao", ripeness: "Unripe", count: 7 },
-            { date: today, variety: "Pico", ripeness: "Ripe", count: 9 },
-            { date: today, variety: "Pico", ripeness: "Overripe", count: 3 },
-        ];
+        // Match Flask date format exactly: "December 3, 2025"
+        const now = new Date();
+        const month = now.toLocaleDateString('en-US', { month: 'long' });
+        const day = now.getDate();
+        const year = now.getFullYear();
+        const today = `${month} ${day}, ${year}`;
+        document.getElementById('current-date').innerText = today;
+        console.log("===========================================");
+        console.log("[Record Page] Today's date:", today);
+        console.log("[Record Page] Date format:", typeof today, JSON.stringify(today));
+        console.log("===========================================");
+
+        // Start with empty records - will be filled by Firebase
+        let records = [];
 
         let barChart, pieChart, doughnutChart, horizontalBarChart;
 
         // Calculate KPIs
-        function updateKPIs(data) {
+        function updateKPIs() {
+            const data = records || [];
             const totalSorted = data.reduce((sum, item) => sum + item.count, 0);
             const ripeCount = data.filter(item => item.ripeness === "Ripe").reduce((sum, item) => sum + item.count, 0);
             const ripePercentage = totalSorted > 0 ? Math.round((ripeCount / totalSorted) * 100) : 0;
@@ -351,16 +384,25 @@
             const overripeCount = data.filter(item => item.ripeness === "Overripe").reduce((sum, item) => sum + item.count, 0);
             const qualityScore = totalSorted > 0 ? Math.round(((ripeCount * 1.0 + unripeCount * 0.5 + overripeCount * 0.2) / totalSorted) * 100) : 0;
 
-            document.getElementById("total-sorted").innerText = totalSorted;
-            document.getElementById("quality-score").innerText = qualityScore;
-            document.getElementById("varieties-count").innerText = varieties.length;
-            document.getElementById("ripe-percentage").innerText = ripePercentage;
+            document.getElementById("total-sorted").innerText = totalSorted || "0";
+            document.getElementById("quality-score").innerText = qualityScore || "0";
+            document.getElementById("varieties-count").innerText = varieties.length || "0";
+            document.getElementById("ripe-percentage").innerText = ripePercentage || "0";
         }
 
         // Render table
         function renderTable(data) {
             const tableBody = document.getElementById("record-table");
             tableBody.innerHTML = "";
+            
+            if (data.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="4" class="px-4 py-8 text-center text-gray-500">
+                    <i class="fas fa-inbox text-4xl mb-2"></i><br>
+                    No sorting data for today yet.<br>
+                    <span class="text-sm">Start sorting on the Sorting page to see data here.</span>
+                </td></tr>`;
+                return;
+            }
             
             data.forEach((item, index) => {
                 const rowClass = index % 2 === 0 ? "bg-gray-50" : "bg-white";
@@ -397,7 +439,8 @@
         };
 
         // Render all charts
-        function renderCharts(data) {
+        function renderCharts() {
+            const data = records || [];
             const varieties = [...new Set(data.map(item => item.variety))];
             const ripenessTypes = [...new Set(data.map(item => item.ripeness))];
 
@@ -598,24 +641,59 @@
             });
         }
 
-        // Initialize
-        updateKPIs(records);
-        renderTable(records);
-        renderCharts(records);
-
-        // Firebase listener
+        // Firebase listener - Filter TODAY ONLY
+        console.log("[Record Page] Setting up Firebase listener for 'records' node...");
         db.ref("records").on("value", snapshot => {
             const firebaseData = snapshot.val();
+            console.log("[Record Page] ========== Firebase Update ==========");
+            console.log("[Record Page] Today's date filter:", today);
+            
             if (firebaseData) {
-                const newRecords = Object.values(firebaseData).filter(item => item.date === today);
-                if (newRecords.length > 0) {
-                    records = newRecords;
+                const allRecords = Object.values(firebaseData);
+                console.log("[Record Page] Total records in database:", allRecords.length);
+                
+                // Debug: show first few records with dates
+                if (allRecords.length > 0) {
+                    console.log("[Record Page] Sample records (first 5):");
+                    allRecords.slice(0, 5).forEach((r, i) => {
+                        const dateMatch = r.date === today;
+                        console.log(`  Record ${i+1}: Date="${r.date}" | Match=${dateMatch} | ${r.variety} ${r.ripeness}`);
+                    });
                 }
-                updateKPIs(records);
-                renderTable(records);
-                renderCharts(records);
+                
+                const newRecords = allRecords.filter(item => item.date === today);
+                console.log("[Record Page] ✓ Today's matching records:", newRecords.length);
+                
+                if (newRecords.length > 0) {
+                    console.log("[Record Page] ✓ Latest record:", newRecords[newRecords.length - 1]);
+                    records = newRecords;
+                    document.getElementById('no-data-warning').classList.add('hidden');
+                    updateKPIs();
+                    renderCharts();
+                } else {
+                    console.warn("[Record Page] ⚠ No records match today's date");
+                    records = [];
+                    document.getElementById('no-data-warning').classList.remove('hidden');
+                    document.getElementById('no-data-date').textContent = today;
+                    updateKPIs();
+                    renderCharts();
+                }
+            } else {
+                console.warn("[Record Page] ⚠ Firebase 'records' node is empty");
+                records = [];
+                updateKPIs();
+                renderCharts();
             }
+            console.log("[Record Page] =====================================");
+        }, error => {
+            console.error("[Record Page] ✗ Firebase listener error:", error);
+            console.error("[Record Page] Error code:", error.code);
+            console.error("[Record Page] Error message:", error.message);
         });
+
+        // Initial render with empty data
+        updateKPIs();
+        renderCharts();
 
         // Print functionality
         document.getElementById("download-report").addEventListener("click", () => {

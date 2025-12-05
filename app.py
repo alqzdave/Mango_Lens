@@ -187,17 +187,35 @@ def history():
     return render_template('history.html')
 
 
+@app.route('/sorting')
+@login_required
+def sorting():
+    # Get user role from Firestore
+    user_ref = firestore_db.collection('users').document(session['user_uid'])
+    user_doc = user_ref.get()
+    user_role = 'facilitator'  # default
+    
+    if user_doc.exists:
+        user_data = user_doc.to_dict()
+        user_role = user_data.get('role', 'facilitator')
+    
+    return render_template('sorting.html', user_role=user_role)
+
+
 @app.route('/api/sorting-data', methods=['POST'])
 def receive_sorting_data():
     """
     API endpoint for IoT device (ESP32-CAM) to send mango sorting data
     Expected JSON format:
     {
-        "variety": "Carabao" | "Pico" | "Indian",
+        "variety": "Carabao" | "Pico" | "Indian" (optional - will use selected variety),
         "ripeness": "Ripe" | "Unripe" | "Overripe",
-        "count": 1
+        "count": 1,
+        "confidence": 95.5 (optional)
     }
     """
+    global selected_variety
+    
     try:
         data = request.get_json()
         
@@ -205,17 +223,14 @@ def receive_sorting_data():
         if not data:
             return jsonify({'error': 'No data provided'}), 400
         
-        variety = data.get('variety')
+        # Use selected variety from dashboard, ignore ESP32 variety
+        variety = selected_variety or 'Carabao'
         ripeness = data.get('ripeness')
         count = data.get('count', 1)
+        confidence = data.get('confidence', 0)
         
-        if not variety or not ripeness:
-            return jsonify({'error': 'Missing required fields: variety and ripeness'}), 400
-        
-        # Validate variety
-        valid_varieties = ['Carabao', 'Pico', 'Indian']
-        if variety not in valid_varieties:
-            return jsonify({'error': f'Invalid variety. Must be one of: {valid_varieties}'}), 400
+        if not ripeness:
+            return jsonify({'error': 'Missing required field: ripeness'}), 400
         
         # Validate ripeness
         valid_ripeness = ['Ripe', 'Unripe', 'Overripe']
@@ -226,19 +241,29 @@ def receive_sorting_data():
         from datetime import datetime
         import time
         
-        current_date = datetime.now().strftime("%B %d, %Y")
+        # Format date without zero-padding the day: "December 3, 2025" not "December 03, 2025"
+        now = datetime.now()
+        current_date = f"{now.strftime('%B')} {now.day}, {now.year}"
         timestamp = int(time.time() * 1000)  # milliseconds
         
         record_data = {
             "date": current_date,
-            "variety": variety,
+            "variety": variety,  # Use selected variety from dashboard
             "ripeness": ripeness,
             "count": int(count),
+            "confidence": float(confidence),
             "timestamp": timestamp
         }
         
         # Save to Firebase Realtime Database
-        db.reference('records').push(record_data)
+        print(f"\n[FIREBASE SAVE] Date: {current_date}, Variety: {variety}, Ripeness: {ripeness}, Count: {count}, Confidence: {confidence}%")
+        try:
+            result = db.reference('records').push(record_data)
+            print(f"[FIREBASE SUCCESS] ✓ Saved with key: {result.key}")
+            print(f"[FIREBASE SUCCESS] ✓ Record: {record_data}\n")
+        except Exception as e:
+            print(f"[FIREBASE ERROR] ✗ Failed to save: {str(e)}\n")
+            return jsonify({'error': 'Failed to save to database', 'details': str(e)}), 500
         
         return jsonify({
             'success': True,
@@ -250,5 +275,126 @@ def receive_sorting_data():
         return jsonify({'error': f'Failed to save data: {str(e)}'}), 500
 
 
+# Global variables to store ESP32-CAM IP, selected variety, and sorting state
+esp32_cam_ip = None
+selected_variety = 'Carabao'  # Default variety
+
+# State file path for persistent sorting state
+STATE_FILE = 'sorting_state.json'
+
+def get_sorting_state():
+    """Read sorting state from file"""
+    try:
+        if os.path.exists(STATE_FILE):
+            with open(STATE_FILE, 'r') as f:
+                data = json.load(f)
+                return data.get('active', False)
+    except:
+        pass
+    return False
+
+def set_sorting_state(active):
+    """Save sorting state to file"""
+    try:
+        with open(STATE_FILE, 'w') as f:
+            json.dump({'active': active}, f)
+    except Exception as e:
+        print(f"Error saving state: {e}")
+
+@app.route('/api/set-camera-ip', methods=['POST'])
+def set_camera_ip():
+    """Set the ESP32-CAM IP address"""
+    global esp32_cam_ip
+    try:
+        data = request.get_json()
+        ip = data.get('ip')
+        if ip:
+            esp32_cam_ip = ip
+            return jsonify({'success': True, 'message': f'Camera IP set to {ip}'}), 200
+        return jsonify({'error': 'No IP provided'}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/get-camera-ip', methods=['GET'])
+def get_camera_ip():
+    """Get the stored ESP32-CAM IP address"""
+    global esp32_cam_ip
+    return jsonify({'ip': esp32_cam_ip}), 200
+
+
+@app.route('/api/set-variety', methods=['POST'])
+def set_variety():
+    """Set the currently selected mango variety"""
+    global selected_variety
+    try:
+        data = request.get_json()
+        variety = data.get('variety')
+        valid_varieties = ['Carabao', 'Pico']
+        
+        if variety and variety in valid_varieties:
+            selected_variety = variety
+            return jsonify({'success': True, 'message': f'Variety set to {variety}'}), 200
+        return jsonify({'error': 'Invalid variety'}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/get-variety', methods=['GET'])
+def get_variety():
+    """Get the currently selected variety"""
+    global selected_variety
+    return jsonify({'variety': selected_variety}), 200
+
+@app.route('/api/sorting-control', methods=['POST', 'GET'])
+def sorting_control():
+    """Control ESP32 sorting - start/stop"""
+    if request.method == 'POST':
+        data = request.get_json()
+        active = data.get('active', False)
+        set_sorting_state(active)
+        print(f"[SORTING CONTROL] Sorting {'STARTED' if active else 'STOPPED'}")
+        print(f"[SORTING CONTROL] State saved to file: {active}")
+        return jsonify({'success': True, 'active': active}), 200
+    else:
+        # ESP32 checks this to know if it should continue sorting
+        active = get_sorting_state()
+        print(f"[SORTING CONTROL GET] Current state from file: {active}")
+        return jsonify({'active': active}), 200
+
+
+@app.route('/api/get-latest-sorting-data', methods=['GET'])
+def get_latest_sorting_data():
+    """Get the most recent sorting data from Firebase"""
+    try:
+        # Query Firebase for all records
+        records_ref = db.reference('records')
+        records = records_ref.get()
+        
+        if records:
+            # Convert to list and find the latest by timestamp
+            latest_record = None
+            latest_timestamp = 0
+            
+            for key, record in records.items():
+                if record.get('timestamp', 0) > latest_timestamp:
+                    latest_timestamp = record['timestamp']
+                    latest_record = record
+            
+            if latest_record:
+                return jsonify({
+                    'success': True,
+                    'data': latest_record
+                }), 200
+        
+        return jsonify({
+            'success': False,
+            'message': 'No records found'
+        }), 200
+            
+    except Exception as e:
+        return jsonify({'error': f'Failed to fetch data: {str(e)}'}), 500
+
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0')

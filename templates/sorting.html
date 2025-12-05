@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=0.1">
+    <title>Live Sorting - MangoLens</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .status-badge {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .7; }
+        }
+        .camera-frame {
+            background: 
+                linear-gradient(to right, #10b981 2px, transparent 2px) 0 0,
+                linear-gradient(to right, #10b981 2px, transparent 2px) 0 100%,
+                linear-gradient(to left, #10b981 2px, transparent 2px) 100% 0,
+                linear-gradient(to left, #10b981 2px, transparent 2px) 100% 100%,
+                linear-gradient(to bottom, #10b981 2px, transparent 2px) 0 0,
+                linear-gradient(to bottom, #10b981 2px, transparent 2px) 100% 0,
+                linear-gradient(to top, #10b981 2px, transparent 2px) 0 100%,
+                linear-gradient(to top, #10b981 2px, transparent 2px) 100% 100%;
+            background-repeat: no-repeat;
+            background-size: 40px 40px;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    {% include 'navbar.html' %}
+
+    <div class="container mx-auto px-4 py-8 mt-20">
+        <!-- Page Header -->
+        <div class="mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-green-800 mb-2">
+                <i class="fas fa-camera text-green-600 mr-3"></i>Live Sorting System
+            </h1>
+            <p class="text-gray-600 text-base md:text-lg">Real-time mango detection and automated sorting</p>
+        </div>
+
+        <!-- Control Panel -->
+        <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
+            <!-- Variety Selection -->
+            <div class="mb-4 pb-4 border-b border-gray-200">
+                <label class="block text-gray-700 font-semibold mb-2">
+                    <i class="fas fa-seedling text-green-600 mr-2"></i>Mango Variety:
+                </label>
+                <div class="flex gap-2">
+                    <button onclick="selectVariety('Carabao')" class="variety-btn px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-300 bg-gray-200 text-gray-700 hover:bg-green-100 hover:text-green-700" data-variety="Carabao">
+                        Carabao
+                    </button>
+                    <button onclick="selectVariety('Pico')" class="variety-btn px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-300 bg-gray-200 text-gray-700 hover:bg-green-100 hover:text-green-700" data-variety="Pico">
+                        Pico
+                    </button>
+                </div>
+                <p id="selectedVarietyText" class="mt-2 text-xs text-gray-500">
+                    <i class="fas fa-info-circle mr-1"></i>Select variety before starting
+                </p>
+            </div>
+            
+            <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+                <!-- Status Display -->
+                <div class="flex items-center space-x-4">
+                    <div id="statusIndicator" class="flex items-center space-x-3">
+                        <div class="w-4 h-4 bg-gray-400 rounded-full"></div>
+                        <span class="text-lg font-semibold text-gray-600">System Idle</span>
+                    </div>
+                    <div id="sessionTime" class="text-gray-500 text-sm hidden">
+                        <i class="fas fa-clock mr-1"></i>
+                        <span id="timer">00:00:00</span>
+                    </div>
+                </div>
+
+                <!-- Control Buttons -->
+                <div class="flex items-center space-x-3">
+                    <button id="toggleBtn" onclick="toggleSorting()" class="bg-gradient-to-r from-green-600 to-green-700 text-white px-8 py-3 rounded-xl font-bold text-lg shadow-lg hover:from-green-700 hover:to-green-800 transition-all duration-300 transform hover:scale-105">
+                        <i class="fas fa-play mr-2"></i>
+                        <span id="btnText">Start Sorting</span>
+                    </button>
+                    <button onclick="resetStats()" class="bg-gray-200 text-gray-700 px-4 py-3 rounded-xl font-semibold hover:bg-gray-300 transition-all duration-300">
+                        <i class="fas fa-redo-alt"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Camera Feed (Left - 2/3 width) -->
+            <div class="lg:col-span-2">
+                <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
+                    <div class="bg-gradient-to-r from-green-600 to-green-700 px-6 py-3">
+                        <h2 class="text-white font-bold text-lg flex items-center">
+                            <i class="fas fa-video mr-2"></i>
+                            Live Camera Feed
+                        </h2>
+                    </div>
+                    <div class="p-4">
+                        <!-- Camera Placeholder -->
+                        <div id="cameraView" class="camera-frame relative bg-gray-900 rounded-xl aspect-video flex items-center justify-center overflow-hidden">
+                            <!-- Camera not connected state -->
+                            <div id="cameraPlaceholder" class="text-center text-gray-400">
+                                <i class="fas fa-camera text-6xl mb-4 opacity-30"></i>
+                                <p class="text-lg font-semibold">Camera Not Connected</p>
+                                <p class="text-sm mt-2 mb-4">Enter your ESP32-CAM IP address below</p>
+                                <div class="flex flex-col items-center space-y-3 max-w-md mx-auto">
+                                    <input type="text" id="cameraIpInput" placeholder="192.168.1.100" 
+                                           class="bg-gray-800 text-white px-4 py-2 rounded-lg w-64 text-center border border-gray-700 focus:border-green-500 focus:outline-none">
+                                    <button onclick="connectCamera()" 
+                                            class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-semibold transition-all">
+                                        <i class="fas fa-plug mr-2"></i>Connect Camera
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Live camera stream -->
+                            <img id="cameraStream" class="hidden w-full h-full object-cover" alt="Live Camera Feed">
+                            
+                            <!-- Active camera overlay -->
+                            <div id="cameraOverlay" class="absolute inset-0 hidden pointer-events-none">
+                                <!-- Scanning line animation -->
+                                <div class="absolute top-0 left-0 w-full h-1 bg-green-500 opacity-50" style="animation: scan 2s linear infinite;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Current Detection Card -->
+                <div id="detectionCard" class="bg-white rounded-2xl shadow-lg p-6 mt-6 hidden">
+                    <h3 class="text-xl font-bold text-green-800 mb-4 flex items-center">
+                        <i class="fas fa-bullseye mr-2 text-green-600"></i>
+                        Current Detection
+                    </h3>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div class="bg-green-50 rounded-lg p-4 text-center">
+                            <div class="text-green-600 text-sm font-semibold mb-1">Variety</div>
+                            <div id="detectedVariety" class="text-gray-800 font-bold text-lg">-</div>
+                        </div>
+                        <div class="bg-yellow-50 rounded-lg p-4 text-center">
+                            <div class="text-yellow-600 text-sm font-semibold mb-1">Maturity</div>
+                            <div id="detectedMaturity" class="text-gray-800 font-bold text-lg">-</div>
+                        </div>
+                        <div class="bg-blue-50 rounded-lg p-4 text-center">
+                            <div class="text-blue-600 text-sm font-semibold mb-1">Confidence</div>
+                            <div id="detectedConfidence" class="text-gray-800 font-bold text-lg">-</div>
+                        </div>
+                        <div class="bg-purple-50 rounded-lg p-4 text-center">
+                            <div class="text-purple-600 text-sm font-semibold mb-1">Action</div>
+                            <div id="detectedAction" class="text-gray-800 font-bold text-lg">-</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statistics Panel (Right - 1/3 width) -->
+            <div class="lg:col-span-1">
+                <!-- Session Statistics -->
+                <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
+                    <h3 class="text-xl font-bold text-green-800 mb-4 flex items-center">
+                        <i class="fas fa-chart-bar mr-2 text-green-600"></i>
+                        Session Stats
+                    </h3>
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center pb-3 border-b border-gray-200">
+                            <span class="text-gray-600 font-medium">Total Sorted</span>
+                            <span id="totalSorted" class="text-2xl font-bold text-green-600">0</span>
+                        </div>
+                        <div class="space-y-2">
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-600 text-sm">Unripe</span>
+                                <span id="unripeCount" class="font-bold text-gray-800">0</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div id="unripeBar" class="bg-red-500 h-2 rounded-full" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div class="space-y-2">
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-600 text-sm">Ripe</span>
+                                <span id="ripeCount" class="font-bold text-gray-800">0</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div id="ripeBar" class="bg-green-500 h-2 rounded-full" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div class="space-y-2">
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-600 text-sm">Overripe</span>
+                                <span id="overripeCount" class="font-bold text-gray-800">0</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div id="overripeBar" class="bg-yellow-500 h-2 rounded-full" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="bg-gradient-to-br from-green-600 to-green-700 rounded-2xl shadow-lg p-6 text-white">
+                    <h3 class="text-xl font-bold mb-4 flex items-center">
+                        <i class="fas fa-bolt mr-2"></i>
+                        Quick Info
+                    </h3>
+                    <div class="space-y-3">
+                        <div class="bg-white/10 backdrop-blur rounded-lg p-3">
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm opacity-90">System Status</span>
+                                <span id="systemStatus" class="font-bold">Ready</span>
+                            </div>
+                        </div>
+                        <div class="bg-white/10 backdrop-blur rounded-lg p-3">
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm opacity-90">Camera Status</span>
+                                <span id="cameraStatus" class="font-bold text-yellow-300">Not Connected</span>
+                            </div>
+                        </div>
+                        <div class="bg-white/10 backdrop-blur rounded-lg p-3">
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm opacity-90">Last Updated</span>
+                                <span id="lastUpdate" class="font-bold text-xs">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Activity Log -->
+                <div class="bg-white rounded-2xl shadow-lg p-6 mt-6">
+                    <h3 class="text-xl font-bold text-green-800 mb-4 flex items-center">
+                        <i class="fas fa-list-ul mr-2 text-green-600"></i>
+                        Recent Activity
+                    </h3>
+                    <div id="activityLog" class="space-y-2 max-h-64 overflow-y-auto">
+                        <div class="text-gray-400 text-sm text-center py-4">
+                            No activity yet. Start sorting to see logs.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        @keyframes scan {
+            0% { top: 0; }
+            100% { top: 100%; }
+        }
+    </style>
+
+    <script>
+        let isSorting = false;
+        let sessionStartTime = null;
+        let timerInterval = null;
+        let cameraConnected = false;
+        let cameraIp = null;
+        let selectedVariety = null; // Store selected variety
+        let stats = {
+            total: 0,
+            unripe: 0,
+            ripe: 0,
+            overripe: 0
+        };
+
+        // Variety selection function
+        function selectVariety(variety) {
+            selectedVariety = variety;
+            
+            // Update button styles
+            document.querySelectorAll('.variety-btn').forEach(btn => {
+                if (btn.getAttribute('data-variety') === variety) {
+                    btn.className = 'variety-btn px-6 py-3 rounded-xl font-semibold transition-all duration-300 bg-green-600 text-white shadow-lg';
+                } else {
+                    btn.className = 'variety-btn px-6 py-3 rounded-xl font-semibold transition-all duration-300 bg-gray-200 text-gray-700 hover:bg-green-100 hover:text-green-700';
+                }
+            });
+            
+            // Update text
+            document.getElementById('selectedVarietyText').innerHTML = 
+                `<i class="fas fa-check-circle text-green-600 mr-1"></i>Selected: <strong>${variety}</strong> mango`;
+            
+            // Save to server
+            fetch('/api/set-variety', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ variety: variety })
+            }).catch(error => console.error('Failed to save variety:', error));
+            
+            addActivity(`Variety changed to ${variety}`, 'info');
+        }
+
+        // Load saved camera IP on page load
+        window.addEventListener('DOMContentLoaded', async () => {
+            try {
+                // Restore camera IP and auto-connect
+                const response = await fetch('/api/get-camera-ip');
+                const data = await response.json();
+                if (data.ip) {
+                    document.getElementById('cameraIpInput').value = data.ip;
+                    await connectCamera();
+                }
+                
+                // Restore variety selection
+                const varietyResponse = await fetch('/api/get-variety');
+                const varietyData = await varietyResponse.json();
+                if (varietyData.variety) {
+                    selectVariety(varietyData.variety);
+                }
+                
+                // Small delay to ensure camera is connected
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                // Check if sorting was active - restore UI state WITHOUT starting new session
+                const wasSorting = sessionStorage.getItem('isSorting') === 'true';
+                console.log('[Sorting Page] Was sorting:', wasSorting, '| Camera connected:', cameraConnected, '| Variety:', selectedVariety);
+                
+                if (wasSorting && cameraConnected && selectedVariety) {
+                    console.log('[Sorting Page] Restoring active sorting session...');
+                    isSorting = true;
+                    
+                    // Restore UI
+                    const btn = document.getElementById('toggleBtn');
+                    const btnText = document.getElementById('btnText');
+                    const btnIcon = btn.querySelector('i');
+                    const statusIndicator = document.getElementById('statusIndicator');
+                    const cameraOverlay = document.getElementById('cameraOverlay');
+                    const detectionCard = document.getElementById('detectionCard');
+                    const sessionTime = document.getElementById('sessionTime');
+                    
+                    btn.className = 'bg-gradient-to-r from-red-600 to-red-700 text-white px-8 py-3 rounded-xl font-bold text-lg shadow-lg hover:from-red-700 hover:to-red-800 transition-all duration-300 transform hover:scale-105';
+                    btnIcon.className = 'fas fa-stop mr-2';
+                    btnText.textContent = 'Stop Sorting';
+                    statusIndicator.innerHTML = '<div class="w-4 h-4 bg-green-500 rounded-full status-badge"></div><span class="text-lg font-semibold text-green-600">Sorting Active</span>';
+                    cameraOverlay.classList.remove('hidden');
+                    detectionCard.classList.remove('hidden');
+                    sessionTime.classList.remove('hidden');
+                    
+                    // Restore timer
+                    const savedStartTime = sessionStorage.getItem('sessionStartTime');
+                    if (savedStartTime) {
+                        sessionStartTime = parseInt(savedStartTime);
+                        startTimer();
+                    }
+                    
+                    // Resume polling
+                    startDataPolling();
+                    console.log('[Sorting Page] ✓ Sorting session restored');
+                } else {
+                    console.log('[Sorting Page] Not restoring - conditions not met');
+                }
+            } catch (error) {
+                console.log('[Sorting Page] Error restoring state:', error);
+            }
+        });
+
+        async function connectCamera() {
+            const ipInput = document.getElementById('cameraIpInput');
+            const ip = ipInput.value.trim();
+            
+            if (!ip) {
+                alert('Please enter ESP32-CAM IP address');
+                return;
+            }
+            
+            // Validate IP format
+            const ipPattern = /^(\d{1,3}\.){3}\d{1,3}$/;
+            if (!ipPattern.test(ip)) {
+                alert('Invalid IP address format');
+                return;
+            }
+            
+            cameraIp = ip;
+            
+            // Save IP to server
+            try {
+                await fetch('/api/set-camera-ip', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ip: ip })
+                });
+            } catch (error) {
+                console.error('Failed to save IP:', error);
+            }
+            
+            // Test camera connection and set stream
+            const streamUrl = `http://${ip}:81/stream`;
+            const cameraStream = document.getElementById('cameraStream');
+            const cameraPlaceholder = document.getElementById('cameraPlaceholder');
+            const cameraStatus = document.getElementById('cameraStatus');
+            
+            // Try to load stream
+            cameraStream.src = streamUrl;
+            cameraStream.onerror = () => {
+                alert('Failed to connect to camera. Check:\n1. ESP32-CAM is powered on\n2. IP address is correct\n3. Both devices are on same network');
+                cameraStream.classList.add('hidden');
+                cameraPlaceholder.classList.remove('hidden');
+                cameraConnected = false;
+                cameraStatus.textContent = 'Not Connected';
+                cameraStatus.className = 'font-bold text-red-300';
+            };
+            
+            cameraStream.onload = () => {
+                cameraStream.classList.remove('hidden');
+                cameraPlaceholder.classList.add('hidden');
+                cameraConnected = true;
+                cameraStatus.textContent = 'Connected';
+                cameraStatus.className = 'font-bold text-green-300';
+                addActivity('Camera connected successfully', 'success');
+            };
+        }
+
+        function toggleSorting() {
+            if (!cameraConnected) {
+                alert('Please connect camera first!');
+                return;
+            }
+            
+            if (!selectedVariety && !isSorting) {
+                alert('Please select mango variety first!');
+                return;
+            }
+            
+            isSorting = !isSorting;
+            const btn = document.getElementById('toggleBtn');
+            const btnText = document.getElementById('btnText');
+            const btnIcon = btn.querySelector('i');
+            const statusIndicator = document.getElementById('statusIndicator');
+            const cameraOverlay = document.getElementById('cameraOverlay');
+            const detectionCard = document.getElementById('detectionCard');
+            const sessionTime = document.getElementById('sessionTime');
+
+            if (isSorting) {
+                // Start sorting
+                sessionStorage.setItem('isSorting', 'true');
+                sessionStorage.setItem('sessionStartTime', Date.now().toString());
+                console.log('[Sorting Page] Started sorting, state saved');
+                
+                // Tell Flask/ESP32 that sorting is active
+                fetch('/api/sorting-control', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({active: true})
+                }).then(response => response.json())
+                  .then(data => {
+                      console.log('[Sorting Page] ✓ Sorting control activated:', data);
+                  })
+                  .catch(error => {
+                      console.error('[Sorting Page] ✗ Failed to activate sorting:', error);
+                  });
+                btn.className = 'bg-gradient-to-r from-red-600 to-red-700 text-white px-8 py-3 rounded-xl font-bold text-lg shadow-lg hover:from-red-700 hover:to-red-800 transition-all duration-300 transform hover:scale-105';
+                btnIcon.className = 'fas fa-stop mr-2';
+                btnText.textContent = 'Stop Sorting';
+                
+                statusIndicator.innerHTML = '<div class="w-4 h-4 bg-green-500 rounded-full status-badge"></div><span class="text-lg font-semibold text-green-600">Sorting Active</span>';
+                cameraOverlay.classList.remove('hidden');
+                detectionCard.classList.remove('hidden');
+                sessionTime.classList.remove('hidden');
+                
+                sessionStartTime = Date.now();
+                startTimer();
+                addActivity('System started', 'success');
+                
+                // Start receiving data from ESP32
+                startDataPolling();
+            } else {
+                // Stop sorting
+                sessionStorage.removeItem('isSorting');
+                sessionStorage.removeItem('sessionStartTime');
+                console.log('[Sorting Page] Stopped sorting, state cleared');
+                
+                // Tell Flask/ESP32 that sorting is stopped
+                fetch('/api/sorting-control', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({active: false})
+                }).then(() => {
+                    console.log('[Sorting Page] ESP32 notified to stop');
+                });
+                
+                btn.className = 'bg-gradient-to-r from-green-600 to-green-700 text-white px-8 py-3 rounded-xl font-bold text-lg shadow-lg hover:from-green-700 hover:to-green-800 transition-all duration-300 transform hover:scale-105';
+                btnIcon.className = 'fas fa-play mr-2';
+                btnText.textContent = 'Start Sorting';
+                
+                statusIndicator.innerHTML = '<div class="w-4 h-4 bg-gray-400 rounded-full"></div><span class="text-lg font-semibold text-gray-600">System Idle</span>';
+                cameraOverlay.classList.add('hidden');
+                sessionTime.classList.add('hidden');
+                
+                stopTimer();
+                addActivity('System stopped', 'info');
+                stopDataPolling();
+            }
+        }
+
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                const elapsed = Date.now() - sessionStartTime;
+                const hours = Math.floor(elapsed / 3600000);
+                const minutes = Math.floor((elapsed % 3600000) / 60000);
+                const seconds = Math.floor((elapsed % 60000) / 1000);
+                
+                document.getElementById('timer').textContent = 
+                    `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }, 1000);
+        }
+
+        function stopTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+        }
+
+        function updateStats() {
+            document.getElementById('totalSorted').textContent = stats.total;
+            document.getElementById('unripeCount').textContent = stats.unripe;
+            document.getElementById('ripeCount').textContent = stats.ripe;
+            document.getElementById('overripeCount').textContent = stats.overripe;
+
+            const total = stats.total || 1;
+            document.getElementById('unripeBar').style.width = `${(stats.unripe / total) * 100}%`;
+            document.getElementById('ripeBar').style.width = `${(stats.ripe / total) * 100}%`;
+            document.getElementById('overripeBar').style.width = `${(stats.overripe / total) * 100}%`;
+        }
+
+        function addActivity(message, type = 'info') {
+            const log = document.getElementById('activityLog');
+            const time = new Date().toLocaleTimeString();
+            
+            const colors = {
+                success: 'text-green-600 bg-green-50',
+                info: 'text-blue-600 bg-blue-50',
+                warning: 'text-yellow-600 bg-yellow-50'
+            };
+            
+            const item = document.createElement('div');
+            item.className = `${colors[type]} rounded-lg p-2 text-sm`;
+            item.innerHTML = `<span class="font-semibold">${time}</span> - ${message}`;
+            
+            if (log.firstChild && log.firstChild.textContent.includes('No activity')) {
+                log.innerHTML = '';
+            }
+            
+            log.insertBefore(item, log.firstChild);
+            
+            if (log.children.length > 10) {
+                log.removeChild(log.lastChild);
+            }
+
+            document.getElementById('lastUpdate').textContent = time;
+        }
+
+        function resetStats() {
+            if (confirm('Reset all statistics? This will clear the current session data.')) {
+                stats = { total: 0, unripe: 0, ripe: 0, overripe: 0 };
+                updateStats();
+                document.getElementById('activityLog').innerHTML = '<div class="text-gray-400 text-sm text-center py-4">No activity yet. Start sorting to see logs.</div>';
+                addActivity('Statistics reset', 'info');
+            }
+        }
+
+        // Data polling for real ESP32 integration
+        let pollingInterval = null;
+        let lastTimestamp = Date.now() - 10000; // Start from 10 seconds ago to catch recent data
+        
+        function startDataPolling() {
+            console.log('🔄 Starting data polling...');
+            
+            // Poll the backend for new sorting data
+            pollingInterval = setInterval(async () => {
+                try {
+                    const response = await fetch('/api/get-latest-sorting-data');
+                    const data = await response.json();
+                    
+                    console.log('📊 Polling response:', data);
+                    
+                    if (data.success && data.data) {
+                        console.log('📦 Latest data timestamp:', data.data.timestamp, 'Last known:', lastTimestamp);
+                        
+                        // Check if this is new data
+                        if (data.data.timestamp > lastTimestamp) {
+                            console.log('✨ NEW DATA DETECTED!');
+                            lastTimestamp = data.data.timestamp;
+                            
+                            // Update detection display
+                            const ripeness = data.data.ripeness;
+                            const bin = ripeness === 'Unripe' ? 'Bin 1' : ripeness === 'Ripe' ? 'Bin 2' : 'Bin 3';
+                            
+                            updateDetection(
+                                data.data.variety,
+                                ripeness,
+                                data.data.confidence.toFixed(1),
+                                bin
+                            );
+                        } else {
+                            console.log('⏸️ No new data (same timestamp)');
+                        }
+                    } else {
+                        console.log('⚠️ No data available yet');
+                    }
+                } catch (error) {
+                    console.error('❌ Error fetching sorting data:', error);
+                }
+            }, 2000); // Poll every 2 seconds
+        }
+
+        function stopDataPolling() {
+            if (pollingInterval) {
+                console.log('⏹️ Stopping data polling');
+                clearInterval(pollingInterval);
+                pollingInterval = null;
+            }
+        }
+
+        // Simulation function (for testing without ESP32)
+        let simulationInterval = null;
+        function startSimulation() {
+            const varieties = ['Carabao', 'Pico', 'Indian'];
+            const maturities = ['Unripe', 'Ripe', 'Overripe'];
+            
+            simulationInterval = setInterval(() => {
+                if (!isSorting) return;
+                
+                const variety = varieties[Math.floor(Math.random() * varieties.length)];
+                const maturity = maturities[Math.floor(Math.random() * maturities.length)];
+                const confidence = (85 + Math.random() * 14).toFixed(1);
+                const bin = maturity === 'Unripe' ? 'Bin 1' : maturity === 'Ripe' ? 'Bin 2' : 'Bin 3';
+                
+                updateDetection(variety, maturity, confidence, bin);
+            }, 3000);
+        }
+
+        function stopSimulation() {
+            if (simulationInterval) {
+                clearInterval(simulationInterval);
+                simulationInterval = null;
+            }
+        }
+
+        function updateDetection(variety, maturity, confidence, action) {
+            document.getElementById('detectedVariety').textContent = variety;
+            document.getElementById('detectedMaturity').textContent = maturity;
+            document.getElementById('detectedConfidence').textContent = confidence + '%';
+            document.getElementById('detectedAction').textContent = action;
+            
+            stats.total++;
+            if (maturity === 'Unripe') stats.unripe++;
+            else if (maturity === 'Ripe') stats.ripe++;
+            else stats.overripe++;
+            
+            updateStats();
+            addActivity(`Sorted ${variety} (${maturity}) to ${action}`, 'success');
+        }
+    </script>
+</body>
+</html>
