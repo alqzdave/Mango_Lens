@@ -256,12 +256,10 @@
         let cameraConnected = false;
         let cameraIp = null;
         let selectedVariety = null; // Store selected variety
-        let stats = {
-            total: 0,
-            unripe: 0,
-            ripe: 0,
-            overripe: 0
-        };
+        
+        // Restore stats from sessionStorage or initialize
+        let stats = JSON.parse(sessionStorage.getItem('sessionStats') || '{"total":0,"unripe":0,"ripe":0,"overripe":0}');
+        console.log('[Stats] Restored from session:', stats);
 
         // Variety selection function
         function selectVariety(variety) {
@@ -298,7 +296,18 @@
                 const data = await response.json();
                 if (data.ip) {
                     document.getElementById('cameraIpInput').value = data.ip;
-                    await connectCamera();
+                    
+                    // Try to connect camera with retries
+                    let retries = 3;
+                    while (retries > 0 && !cameraConnected) {
+                        const success = await connectCamera();
+                        if (!success) {
+                            console.log(`[Camera] Retry ${4 - retries}/3...`);
+                            retries--;
+                        } else {
+                            break; // Connected successfully
+                        }
+                    }
                 }
                 
                 // Restore variety selection
@@ -308,8 +317,31 @@
                     selectVariety(varietyData.variety);
                 }
                 
-                // Small delay to ensure camera is connected
-                await new Promise(resolve => setTimeout(resolve, 500));
+                // Wait a bit longer to ensure camera is fully connected
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Sync stats with Firebase to get accurate count
+                try {
+                    const response = await fetch('/api/get-session-stats');
+                    const data = await response.json();
+                    if (data.success) {
+                        stats = {
+                            total: data.total || 0,
+                            unripe: data.unripe || 0,
+                            ripe: data.ripe || 0,
+                            overripe: data.overripe || 0
+                        };
+                        console.log('[Stats] Synced from Firebase:', stats);
+                    } else {
+                        console.log('[Stats] Using sessionStorage:', stats);
+                    }
+                } catch (error) {
+                    console.log('[Stats] Sync failed, using sessionStorage:', stats);
+                }
+                
+                // Update stats display with synced values
+                updateStats();
+                console.log('[Stats] Display updated');
                 
                 // Check if sorting was active - restore UI state WITHOUT starting new session
                 const wasSorting = sessionStorage.getItem('isSorting') === 'true';
@@ -359,15 +391,15 @@
             const ip = ipInput.value.trim();
             
             if (!ip) {
-                alert('Please enter ESP32-CAM IP address');
-                return;
+                console.error('[Camera] No IP address provided');
+                return false;
             }
             
             // Validate IP format
             const ipPattern = /^(\d{1,3}\.){3}\d{1,3}$/;
             if (!ipPattern.test(ip)) {
-                alert('Invalid IP address format');
-                return;
+                console.error('[Camera] Invalid IP format');
+                return false;
             }
             
             cameraIp = ip;
@@ -389,25 +421,16 @@
             const cameraPlaceholder = document.getElementById('cameraPlaceholder');
             const cameraStatus = document.getElementById('cameraStatus');
             
-            // Try to load stream
-            cameraStream.src = streamUrl;
-            cameraStream.onerror = () => {
-                alert('Failed to connect to camera. Check:\n1. ESP32-CAM is powered on\n2. IP address is correct\n3. Both devices are on same network');
-                cameraStream.classList.add('hidden');
-                cameraPlaceholder.classList.remove('hidden');
-                cameraConnected = false;
-                cameraStatus.textContent = 'Not Connected';
-                cameraStatus.className = 'font-bold text-red-300';
-            };
-            
-            cameraStream.onload = () => {
-                cameraStream.classList.remove('hidden');
-                cameraPlaceholder.classList.add('hidden');
-                cameraConnected = true;
-                cameraStatus.textContent = 'Connected';
-                cameraStatus.className = 'font-bold text-green-300';
-                addActivity('Camera connected successfully', 'success');
-            };
+            // Just set the stream directly - img tag will handle MJPEG
+            cameraStream.src = streamUrl + '?t=' + Date.now(); // Cache buster
+            cameraStream.classList.remove('hidden');
+            cameraPlaceholder.classList.add('hidden');
+            cameraConnected = true;
+            cameraStatus.textContent = 'Connected';
+            cameraStatus.className = 'font-bold text-green-300';
+            addActivity('Camera connected successfully', 'success');
+            console.log('[Camera] ✓ Stream set to:', streamUrl);
+            return true;
         }
 
         function toggleSorting() {
@@ -417,7 +440,7 @@
             }
             
             if (!selectedVariety && !isSorting) {
-                alert('Please select mango variety first!');
+                alert('Please select a mango variety first');
                 return;
             }
             
@@ -434,20 +457,15 @@
                 // Start sorting
                 sessionStorage.setItem('isSorting', 'true');
                 sessionStorage.setItem('sessionStartTime', Date.now().toString());
-                console.log('[Sorting Page] Started sorting, state saved');
+                console.log('Started sorting');
                 
-                // Tell Flask/ESP32 that sorting is active
+                // Notify backend that sorting is active
                 fetch('/api/sorting-control', {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({active: true})
-                }).then(response => response.json())
-                  .then(data => {
-                      console.log('[Sorting Page] ✓ Sorting control activated:', data);
-                  })
-                  .catch(error => {
-                      console.error('[Sorting Page] ✗ Failed to activate sorting:', error);
-                  });
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ active: true })
+                });
+                
                 btn.className = 'bg-gradient-to-r from-red-600 to-red-700 text-white px-8 py-3 rounded-xl font-bold text-lg shadow-lg hover:from-red-700 hover:to-red-800 transition-all duration-300 transform hover:scale-105';
                 btnIcon.className = 'fas fa-stop mr-2';
                 btnText.textContent = 'Stop Sorting';
@@ -459,24 +477,25 @@
                 
                 sessionStartTime = Date.now();
                 startTimer();
-                addActivity('System started', 'success');
-                
-                // Start receiving data from ESP32
                 startDataPolling();
+                addActivity('Sorting session started', 'success');
             } else {
                 // Stop sorting
                 sessionStorage.removeItem('isSorting');
                 sessionStorage.removeItem('sessionStartTime');
-                console.log('[Sorting Page] Stopped sorting, state cleared');
+                console.log('Stopped sorting');
                 
-                // Tell Flask/ESP32 that sorting is stopped
+                // Notify backend that sorting is stopped
                 fetch('/api/sorting-control', {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({active: false})
-                }).then(() => {
-                    console.log('[Sorting Page] ESP32 notified to stop');
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ active: false })
                 });
+                
+                if (pollingInterval) {
+                    clearInterval(pollingInterval);
+                    pollingInterval = null;
+                }
                 
                 btn.className = 'bg-gradient-to-r from-green-600 to-green-700 text-white px-8 py-3 rounded-xl font-bold text-lg shadow-lg hover:from-green-700 hover:to-green-800 transition-all duration-300 transform hover:scale-105';
                 btnIcon.className = 'fas fa-play mr-2';
@@ -488,7 +507,6 @@
                 
                 stopTimer();
                 addActivity('System stopped', 'info');
-                stopDataPolling();
             }
         }
 
@@ -521,6 +539,9 @@
             document.getElementById('unripeBar').style.width = `${(stats.unripe / total) * 100}%`;
             document.getElementById('ripeBar').style.width = `${(stats.ripe / total) * 100}%`;
             document.getElementById('overripeBar').style.width = `${(stats.overripe / total) * 100}%`;
+            
+            // Save to sessionStorage
+            sessionStorage.setItem('sessionStats', JSON.stringify(stats));
         }
 
         function addActivity(message, type = 'info') {
@@ -553,6 +574,7 @@
         function resetStats() {
             if (confirm('Reset all statistics? This will clear the current session data.')) {
                 stats = { total: 0, unripe: 0, ripe: 0, overripe: 0 };
+                sessionStorage.removeItem('sessionStats');
                 updateStats();
                 document.getElementById('activityLog').innerHTML = '<div class="text-gray-400 text-sm text-center py-4">No activity yet. Start sorting to see logs.</div>';
                 addActivity('Statistics reset', 'info');
@@ -561,10 +583,11 @@
 
         // Data polling for real ESP32 integration
         let pollingInterval = null;
-        let lastTimestamp = Date.now() - 10000; // Start from 10 seconds ago to catch recent data
+        let lastTimestamp = 0; // Start from 0 to catch all data
         
         function startDataPolling() {
             console.log('🔄 Starting data polling...');
+            lastTimestamp = 0; // Reset to 0 every time we start sorting
             
             // Poll the backend for new sorting data
             pollingInterval = setInterval(async () => {

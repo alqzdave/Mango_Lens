@@ -157,7 +157,7 @@
         const firebaseConfig = {
             apiKey: "AIzaSyCoYkWwdq7wm5nhUjGZ47FtUm1XDyVzOsQ",
             authDomain: "mango-lens.firebaseapp.com",
-            databaseURL: "https://mango-lens-default-rtdb.asia-southeast1.firebasedatabase.app",
+            databaseURL: "https://mango-lens-1fff8-default-rtdb.firebaseio.com",
             projectId: "mango-lens",
             storageBucket: "mango-lens.firebasestorage.app",
             messagingSenderId: "1044561936701",
@@ -168,23 +168,25 @@
         const db = firebase.database();
 
         const dummyData = [
-            // JULY
-            { date: "July 1, 2025", variety: "Pico", count: 200 },
-            { date: "July 1, 2025", variety: "Kinalabao", count: 170 },
-            { date: "July 5, 2025", variety: "Pico", count: 185 },
-            { date: "July 5, 2025", variety: "Kinalabao", count: 210 },
+            // August 2025 (Total per date: 400-500)
+            { date: "August 12, 2025", variety: "Carabao", count: 234 },
+            { date: "August 12, 2025", variety: "Pico", count: 198 },
+            { date: "August 15, 2025", variety: "Carabao", count: 256 },
+            { date: "August 15, 2025", variety: "Pico", count: 223 },
+            { date: "August 18, 2025", variety: "Carabao", count: 218 },
+            { date: "August 18, 2025", variety: "Pico", count: 241 },
+            { date: "August 23, 2025", variety: "Carabao", count: 267 },
+            { date: "August 23, 2025", variety: "Pico", count: 189 },
+            { date: "August 27, 2025", variety: "Carabao", count: 245 },
+            { date: "August 27, 2025", variety: "Pico", count: 254 },
 
-            // AUGUST
-            { date: "August 2, 2025", variety: "Pico", count: 190 },
-            { date: "August 2, 2025", variety: "Kinalabao", count: 220 },
-            { date: "August 8, 2025", variety: "Pico", count: 175 },
-            { date: "August 8, 2025", variety: "Kinalabao", count: 200 },
-
-            // September
-            { date: "September 1, 2025", variety: "Pico", count: 180 },
-            { date: "September 1, 2025", variety: "Kinalabao", count: 210 },
-            { date: "September 2, 2025", variety: "Pico", count: 120 },
-            { date: "September 2, 2025", variety: "Kinalabao", count: 100 }
+            // September 2025 (Total per date: 400-500)
+            { date: "September 10, 2025", variety: "Carabao", count: 228 },
+            { date: "September 10, 2025", variety: "Pico", count: 215 },
+            { date: "September 15, 2025", variety: "Carabao", count: 261 },
+            { date: "September 15, 2025", variety: "Pico", count: 227 },
+            { date: "September 18, 2025", variety: "Carabao", count: 249 },
+            { date: "September 18, 2025", variety: "Pico", count: 238 }
         ];
 
         let historyData = dummyData; // Start with dummy data
@@ -403,24 +405,27 @@
 
         db.ref("records").on("value", snapshot => {
             const firebaseData = snapshot.val();
-            const todayDate = getTodayDateString();
+            
+            // Always start with dummy data for historical months
+            historyData = [...dummyData];
             
             if (firebaseData && Object.keys(firebaseData).length > 0) {
-                // Firebase has data - filter out today's records (show only past)
-                historyData = Object.values(firebaseData)
+                // Add Firebase data (will be recent dates like today)
+                const firebaseRecords = Object.values(firebaseData)
                     .map(record => ({
                         date: convertFirebaseDateToDisplay(record.date || "Unknown"),
                         variety: record.variety || "Unknown",
                         count: record.count || 0
-                    }))
-                    .filter(record => record.date !== todayDate); // Exclude today
+                    }));
                 
-                console.log("[History Page] Showing past dates only (excluding today)");
-                console.log("[History Page] Past records:", historyData.length);
+                // Merge: Keep dummy data for Aug/Sept, add Firebase data for other dates
+                const dummyDates = dummyData.map(d => d.date);
+                const newFirebaseData = firebaseRecords.filter(r => !dummyDates.includes(r.date));
+                historyData = [...dummyData, ...newFirebaseData];
+                
+                console.log("[History Page] Total records loaded:", historyData.length);
             } else {
-                // No Firebase data - use dummy data for testing
-                historyData = dummyData;
-                console.log("[History Page] Using dummy data:", historyData.length, "records");
+                console.log("[History Page] Using dummy data only");
             }
             
             // Update table with current data

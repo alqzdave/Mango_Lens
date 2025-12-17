@@ -396,5 +396,45 @@ def get_latest_sorting_data():
         return jsonify({'error': f'Failed to fetch data: {str(e)}'}), 500
 
 
+@app.route('/api/get-session-stats', methods=['GET'])
+def get_session_stats():
+    """Get current session stats from Firebase (today's data only)"""
+    try:
+        from datetime import datetime
+        
+        # Get today's date in same format as records
+        now = datetime.now()
+        today = f"{now.strftime('%B')} {now.day}, {now.year}"
+        
+        records_ref = db.reference('records')
+        records = records_ref.get()
+        
+        if records:
+            # Filter today's records only
+            today_records = [r for r in records.values() if r.get('date') == today]
+            
+            # Calculate stats
+            stats = {
+                'total': sum(r.get('count', 0) for r in today_records),
+                'unripe': sum(r.get('count', 0) for r in today_records if r.get('ripeness') == 'Unripe'),
+                'ripe': sum(r.get('count', 0) for r in today_records if r.get('ripeness') == 'Ripe'),
+                'overripe': sum(r.get('count', 0) for r in today_records if r.get('ripeness') == 'Overripe')
+            }
+            
+            return jsonify({
+                'success': True,
+                'date': today,
+                **stats
+            }), 200
+        
+        return jsonify({
+            'success': False,
+            'message': 'No records found'
+        }), 200
+            
+    except Exception as e:
+        return jsonify({'error': f'Failed to fetch stats: {str(e)}'}), 500
+
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0')
